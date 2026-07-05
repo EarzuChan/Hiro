@@ -786,7 +786,6 @@ hiro {
 ### P0.3 建立 `:compose` 的 Android-Skiko 原型
 
 - 让 Android target 编译 `commonMain + skikoMain + androidSkikoMain`；
-- 避开官方 `androidMain`；
 - 跑通 `CanvasLayersComposeScene`；
 - 跑通 `FrameRecomposer`；
 - 跑通 `SkiaBackedCanvas`。
