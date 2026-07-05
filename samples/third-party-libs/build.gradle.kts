@@ -2,8 +2,8 @@ import me.earzuchan.hiro.buildlogic.HiroBuildConfig
 
 plugins {
     id("me.earzuchan.hiro.internal.build-logic")
+    id("me.earzuchan.hiro")
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
 }
 
 val appNamespace = "${HiroBuildConfig.namespace}.samples.thirdparty"

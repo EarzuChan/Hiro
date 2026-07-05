@@ -14,6 +14,12 @@ java {
 
 kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_11) } }
 
+sourceSets {
+    main {
+        kotlin.srcDir("../../build-logic/src/hiroGradlePlugin/kotlin")
+    }
+}
+
 dependencies { implementation(gradleApi()) }
 
 gradlePlugin {

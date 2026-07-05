@@ -2,6 +2,7 @@ import me.earzuchan.hiro.buildlogic.HiroBuildConfig
 
 plugins {
     id("me.earzuchan.hiro.internal.build-logic")
+    id("me.earzuchan.hiro")
     alias(libs.plugins.android.library)
     `maven-publish`
 }
@@ -23,7 +24,10 @@ android {
     publishing { singleVariant("release") { withSourcesJar() } }
 }
 
-dependencies { api(project(":compose")) }
+dependencies {
+    api(project(":compose"))
+    api(libs.jetbrains.compose.material3)
+}
 
 publishing {
     publications {
