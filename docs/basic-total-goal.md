@@ -1,4 +1,4 @@
-﻿# Hiro：Compose Skiko Android 的初步架构说明与实施计划
+# Hiro：Compose Skiko Android 的初步架构说明与实施计划
 
 项目名：**Hiro**（致敬我的爱人，`魔法少女ノ魔女裁判` 的 `二階堂 ヒロ`）。 
 目标：在 Android 上实现一套 **不走 AndroidX Compose Android 后端**、而是走 **JetBrains Compose Multiplatform 的 Skiko/Skia 渲染链路** 的 Compose Host，使 Android 7 / API 24+ 能通过 Skia GPU backend 渲染出 Compose 界面，并吃上使用 SkSL 的 RuntimeEffect 等。
@@ -14,6 +14,8 @@
 我们要做的是：
 
 > **把 Compose Multiplatform 的 `skikoMain` Compose scene 搬到 Android View / Activity 上运行。**
+
+除了Compose Skiko本身的接入，还有一个带派的细节：**把 Hiro 自身包和第三方库里已有的无窗口 Skiko/JVM 实现转给 Android 用**。这个实现面不是每个坐标各自包一层，也不是给 KyantLiquidGlass / MiuixBlur 等第三方库做 Hiro wrapper，而是统一放在 `hiro-gradle-plugin` 的依赖解析规则里。用户不手动声明劫持模块，也不选择是否劫持；插件只替换已有安全变体，不发明不存在的实现。
 
 也就是说，Android 只作为一个宿主平台，负责：
 
@@ -49,6 +51,7 @@ GPU rendering = yes
 SkSL / RuntimeEffect = yes
 Android RuntimeShader / AGSL = no dependency
 AndroidX Compose Android Canvas/Node backend = no dependency
+兼容第三方 Compose/KMP 库 = 通过 Hiro 插件自动导向安全的无窗口 Skiko/JVM 变体
 ```
 
 ---
@@ -89,7 +92,7 @@ androidx.compose.ui.platform.ComposeView
 
 ### 我们使用的部分
 
-我们复用的是 Compose **Multiplatform** 的 Compose runtime / foundation / material 等上层实现。
+我们复用的是 Compose **Multiplatform** 的 Compose runtime / foundation / material3 等上层实现。
 
 JetBrains 仍将这些库的包名设为：
 
@@ -111,6 +114,8 @@ androidx.compose.* API / common logic
 
 > **包名叫 `androidx.compose`，不代表渲染后端是 AndroidX Compose Android。我们使用的是 Compose Multiplatform 的 Skiko Compose。**
 
+对第三方库也是同理：它们的业务代码可以继续写 `androidx.compose.*` API，Hiro 插件负责让 Android 依赖图避开 Android 官方后端，转向 Hiro 的 Compose/Skiko 后端或该库已有的无窗口 Skiko/JVM 实现。
+
 ---
 
 ## 总体架构
@@ -120,7 +125,7 @@ androidx.compose.* API / common logic
 ```mermaid
 flowchart TD
     A["Android Activity / ViewGroup"]
-    --> B["SkikoComposeView"]
+    --> B["HiroComposeView"]
 
     B --> C["Skiko Android SkiaLayer"]
     C --> D["SkikoSurfaceView / GLSurfaceView"]
@@ -153,7 +158,7 @@ flowchart TD
 
 ```text
 Activity / ViewGroup
-  -> SkikoComposeView
+  -> HiroComposeView
     -> SkiaLayer.attachTo(viewGroup)
       -> SkikoSurfaceView / GLSurfaceView
         -> OpenGL framebuffer
@@ -270,25 +275,43 @@ OpenGL ES 3.0+ preferred / recommended
 
 ## 模块设计
 
-### 不复用 AndroidX Compose UI artifact
+### 公有坐标只提供能力，不各自施法
 
-不直接依赖：
-
-```text
-androidx.compose.ui:ui 的普通 Android artifact
-```
-
-因为它会把 Android Compose 后端带进来。
-
-我们需要自己的 Compose UI artifact 变体：
+Hiro 公开发布的坐标应保持简洁：
 
 ```text
-compose-ui-skiko-android
-compose-ui-graphics-skiko-android
-compose-ui-text-skiko-android
+me.earzuchan.hiro:skiko
+  -> Skiko Android runtime/native/backend 基础设施
+
+me.earzuchan.hiro:compose
+  -> runtime / ui / foundation / animation 等 Compose Skiko Android 能力
+  -> HiroComposeView / HiroActivity / Android host glue
+
+me.earzuchan.hiro:hiro
+  -> skiko + compose 聚合包
+
+me.earzuchan.hiro:material3
+  -> Material3 便利坐标，独立于 hiro
+
+me.earzuchan.hiro:hiro-gradle-plugin
+  -> 依赖替换、Skiko 变体劫持、泄漏检查
 ```
 
-或在源码构建中建立新的 source set：
+关键约束：
+
+- `:hiro` 只是 `skiko + compose` 的聚合，不含 `material3`；
+- 不为第三方库另发 `hiro-xxx` wrapper；
+- “Skiko 转给 Android 用”这件事只由 `hiro-gradle-plugin` 做一次。
+
+### 关于我们发的包
+
+因为我们是只搞这 Compose Skiko Android。故 Compose 的对外发布层不拆成一堆细坐标（Ui、Runtime、Foundation...），而是统一收进：
+
+```text
+me.earzuchan.hiro:compose
+```
+
+源码构建上，我们需要建立新的 source set：
 
 ```text
 commonMain
@@ -322,32 +345,42 @@ flowchart TD
 commonMain + skikoMain + androidSkikoMain
 ```
 
-### 高层库复用策略
+### 高层库与第三方库复用策略
 
-我们不维护 Material3 等包的实现。
+我们不维护 Material3 等包的另一套实现，也不维护第三方库的 Hiro 转包。
 
 原则：
 
 ```text
-runtime / animation / foundation / material / material3 尽量原样复用 CMP common 逻辑
+runtime / ui / foundation / animation / material3 尽量复用 CMP common/skiko 逻辑
+第三方库继续使用原坐标
+Hiro 插件自动处理 Android 依赖图
 ```
 
-需要确保这些库链接到我们的 UI artifact，而不是官方 Android UI artifact。
+插件规则：
 
-也就是说，依赖替换大概是：
+- 官方 Compose 坐标在 Android 上导向 Hiro 的 Compose/Skiko 能力包；
+- Hiro 自身包也走同一套规则，把 CMP 的 Skiko 实现接到 Android-Skiko target；
+- 第三方库的 Android 变体干净则不动；
+- 第三方库的 Android 变体不干净，则只允许劫持到该库已有的无窗口 Skiko/JVM artifact；
+- 找不到安全候选时，`strict = true` 直接失败。
 
-```text
-androidx.compose.ui:ui
-  -> our.compose.ui:ui-skiko-android
+不干净的定义：
 
-androidx.compose.ui:ui-graphics
-  -> our.compose.ui:ui-graphics-skiko-android
+- 引用 Android Compose 后端；
+- 引用 AGSL / `android.graphics.RuntimeShader` / `android.graphics.RenderEffect`；
+- 依赖 Legacy Material；
+- 绑定 Android-only 渲染实现；
+- 引用 AWT / Swing / JavaFX / Compose Desktop window / Skiko AWT 等桌面窗口系统。
 
-androidx.compose.ui:ui-text
-  -> our.compose.ui:ui-text-skiko-android
-```
+安全候选必须同时满足：
 
-包名/API 保持兼容，上层 Material3 不应感知后端变化。
+- 是已发布 artifact；
+- 不依赖 Android Compose 后端；
+- 不依赖 AGSL / Android-only 渲染实现；
+- 不依赖 AWT / Swing / JavaFX / Compose Desktop window / Skiko AWT 等桌面窗口系统。
+
+Hiro 不会把 AGSL 自动翻译成 SkSL，也不会把只有 Android artifact 或只有桌面窗口实现的库变成可用 Skiko 库。
 
 ---
 
@@ -367,64 +400,6 @@ androidx.compose.ui:ui-text
 - 转发 touch / mouse / key / IME；
 - 管理生命周期；
 - 对外暴露 `setContent {}`。
-
-伪代码：
-
-```kotlin
-@OptIn(InternalComposeUiApi::class)
-class HiroComposeView(context: Context) : FrameLayout(context) {
-
-    private val skiaLayer = SkiaLayer()
-
-    private val frameRecomposer = FrameRecomposer(
-        coroutineContext = Dispatchers.Main.immediate,
-        invalidate = ::scheduleFrame
-    )
-
-    private val renderingScope = SingleComposeSceneRenderingScope(::scheduleFrame)
-
-    private val scene = CanvasLayersComposeScene(
-        frameRecomposer = frameRecomposer,
-        density = Density(resources.displayMetrics.density),
-        layoutDirection = currentLayoutDirection(),
-        platformContext = AndroidSkikoPlatformContext(this),
-        invalidateLayout = ::scheduleFrame,
-        invalidateDraw = ::scheduleFrame,
-    )
-
-    init {
-        isFocusable = true
-        isFocusableInTouchMode = true
-
-        skiaLayer.renderDelegate = SkikoRenderDelegate { skiaCanvas, width, height, nanoTime ->
-            scene.size = IntSize(width, height)
-            scene.density = Density(resources.displayMetrics.density)
-
-            with(renderingScope) {
-                scene.render(frameRecomposer, skiaCanvas.asComposeCanvas(), nanoTime)
-            }
-        }
-
-        skiaLayer.attachTo(this)
-    }
-
-    fun setContent(content: @Composable () -> Unit) {
-        scene.setContent(content = content)
-        scheduleFrame()
-    }
-
-    private fun scheduleFrame() {
-        skiaLayer.needRender()
-    }
-
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        scene.close()
-        frameRecomposer.close()
-        skiaLayer.detach()
-    }
-}
-```
 
 ### Activity 独占模式
 
@@ -459,7 +434,7 @@ class MainActivity : Activity() {
 第二目标：
 
 ```text
-Android ViewGroup 中嵌入一块 SkikoComposeView
+Android ViewGroup 中嵌入一块 HiroComposeView
 ```
 
 注意：
@@ -690,14 +665,15 @@ View detach -> release scene / recomposer / Skia resources
 
 ### Android 配置
 
-框架建议：
+框架配置以 `HiroBuildConfig` 为单点来源：
 
 ```kotlin
 android {
-    compileSdk = 37
+    namespace = "${HiroBuildConfig.libraryId}.xxx"
+    compileSdk = HiroBuildConfig.androidCompileSdk
 
     defaultConfig {
-        minSdk = 24
+        minSdk = HiroBuildConfig.androidMinSdk
 
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
@@ -739,9 +715,34 @@ src/main/jniLibs/x86_64/
 
 ### 依赖替换
 
-上层 Material3 等库应链接到我们的 Skiko Android UI artifact。
+上层 Material3 和第三方 Compose/KMP 库应链接到 Hiro 的 Skiko Android 能力，而不是普通 Android Compose 后端。
 
-或需建立 dependency substitution / composite build 规则，避免普通 Android Compose UI artifact 混入。这块具体要参考 Kotlin 大项目管理的最佳实践。
+用户侧理想接入：
+
+```kotlin
+plugins {
+    id("com.android.application")
+    id("me.earzuchan.hiro") version "1.11.1"
+}
+
+dependencies {
+    implementation("me.earzuchan.hiro:hiro:1.11.1")
+    implementation("me.earzuchan.hiro:material3:1.11.1")
+
+    // 第三方库继续使用原坐标，不需要 Hiro wrapper。
+    implementation("第三方group:第三方module:第三方version")
+}
+
+hiro {
+    strict = true
+}
+```
+
+`strict = true` 的语义：
+
+- 检查 Android main compile/runtime classpath 的最终产物；
+- 发现 Android Compose 后端、Legacy Material、AGSL/RenderEffect、桌面窗口/AWT/Swing/JavaFX 路径则失败；
+- 需要劫持但没有安全候选时失败。
 
 ---
 
@@ -749,13 +750,14 @@ src/main/jniLibs/x86_64/
 
 本项目不依赖 Android 系统 backdrop / RuntimeShader / RenderEffect。
 
-既有库（[KyantLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass)、[MiuixBlur](https://github.com/compose-miuix-ui/miuix)）无需更改仍可正常使用。
+既有库（[KyantLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass)、[MiuixBlur](https://github.com/compose-miuix-ui/miuix)）的业务代码不需要为 Hiro 改写；用户仍引入原坐标，由 Hiro 插件在 Android 依赖图上选择可用的 Skiko/SKSL 路径。
 
 这意味着：
 
 - 不需要 Android 12 RenderEffect；
 - 不需要 Android 13 RuntimeShader；
-- API 24+ 即可吃上 Skia 内部 backdrop、Skia SkSl Shader。
+- API 24+ 即可吃上 Skia 内部 backdrop、Skia SkSL Shader；
+- 如果某库只有 AGSL / Android-only 实现，Hiro 不会凭空生成 SkSL 版本。
 
 ---
 
@@ -773,7 +775,15 @@ src/main/jniLibs/x86_64/
 - 接生命周期；
 - 提供 `SkikoSurfaceView` 获取/配置入口。
 
-### P0.2 建立 `compose-ui-skiko-android` 原型
+### P0.2 Gradle 插件魔法最小闭环
+
+- 用户应用 `me.earzuchan.hiro` 插件；
+- 用户只引入 `me.earzuchan.hiro:hiro` 和第三方原坐标；
+- `me.earzuchan.hiro:compose` 内的 Compose 后端依赖从安卓替换到Skiko，由之实现；
+- 对 Hiro 自身包和可判定第三方库自动执行 Skiko/JVM 变体劫持；
+- strict 模式能发现 Android Compose / AGSL-only 路径泄漏。
+
+### P0.3 建立 `:compose` 的 Android-Skiko 原型
 
 - 让 Android target 编译 `commonMain + skikoMain + androidSkikoMain`；
 - 避开官方 `androidMain`；
@@ -781,7 +791,7 @@ src/main/jniLibs/x86_64/
 - 跑通 `FrameRecomposer`；
 - 跑通 `SkiaBackedCanvas`。
 
-### P0.3 实现 `SkikoComposeView`
+### P0.4 实现 `HiroComposeView`
 
 - `setContent {}`；
 - attach/detach；
@@ -790,7 +800,7 @@ src/main/jniLibs/x86_64/
 - render delegate；
 - canvas bridge。
 
-### P0.4 输入 MVP
+### P0.5 输入 MVP
 
 - 单指 touch；
 - 多指 touch；
@@ -798,7 +808,7 @@ src/main/jniLibs/x86_64/
 - basic key event；
 - hover/mouse 可先后置。
 
-### P0.5 Shader 验证
+### P0.6 Shader 验证
 
 - `RuntimeEffect.makeForShader`；
 - `RuntimeShaderBuilder` uniforms；
@@ -815,10 +825,12 @@ src/main/jniLibs/x86_64/
 
 目标：常规 Compose App 能写，Material/Foundation 能用。
 
-### P1.1 Foundation / Material / Material3 依赖接入
+### P1.1 Foundation / Material3 / 第三方库依赖接入
 
-- 复用 CMP common 实现；
-- dependency substitution；
+- 复用 CMP common/skiko 实现；
+- 使用同一套 Hiro Gradle 插件魔法；
+- `:material3` 只作为独立便利坐标，不做第二套替换；
+- 第三方库继续使用原坐标；
 - 验证 Button / Text / LazyColumn / Animation / Material3 components。
 
 ### P1.2 Text / IME
@@ -873,16 +885,25 @@ src/main/jniLibs/x86_64/
 ### P2.3 Packaging
 
 - Maven artifact；
-- Gradle plugin 或 dependency substitution helper；
+- Gradle plugin；
+- 依赖替换默认规则；
+- 第三方库自动判定规则；
+- strict 泄漏检查；
 - sample apps；
 - template project。
 
-### P2.4 Surface backend 演进
+### P2.4 第三方库适配清单
+
+- 内置已验证库清单；
+- 对每个库记录 Android 原变体、可用无窗口 Skiko/JVM 候选、不可救边界和测试样例；
+- 对常见错误给出明确诊断。
+
+### P2.5 Surface backend 演进
 
 - GLSurfaceView backend；
 - 可选 TextureView backend；
 - transparent / rounded island support；
-- multiple SkikoComposeView instances。
+- multiple HiroComposeView instances。
 
 ---
 
@@ -925,3 +946,26 @@ SkSL 最终受 GPU driver 影响。
 
 全屏 Activity 模式最稳。View 嵌入模式可用，但透明、圆角、z-order 需要额外 backend 设计。
 
+### Gradle 魔法边界
+
+依赖图魔法只负责选择和替换已有变体，不负责发明不存在的实现。
+
+能做：
+
+- 把 Android Compose 后端依赖替换到 Hiro 的 `:compose`；
+- 对可判定第三方库选择其已有无窗口 Skiko/JVM 变体；
+- 发现 Android Compose / Legacy Material / AGSL-only 路径泄漏并失败；
+- 让用户继续使用第三方原坐标。
+
+不能做：
+
+- 把只有 AGSL 的库自动翻译成 SkSL；
+- 把只有 Android artifact 的库变成 KMP 库；
+- 把桌面窗口实现安全搬到 Android；
+- 在 Hiro 自身坐标上递归替换，造成依赖环。
+
+应对：
+
+- 自动规则先少后稳，扩展必须进入插件规则与测试；
+- strict 默认开启；
+- 每次跟随 CMP stable 更新时同步跑依赖图泄漏测试。

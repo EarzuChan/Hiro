@@ -1,1 +1,8 @@
-.idea/
+﻿.idea/
+tmp-refs/
+build/
+.gradle/
+**/build/
+local.properties
+*.iml
+.kotlin/

@@ -1,0 +1,17 @@
+[versions]
+composeMultiplatform = "1.11.1"
+skiko = "0.144.6"
+agp = "9.0.1"
+kotlin = "2.2.20"
+
+[libraries]
+jetbrains-skiko = { module = "org.jetbrains.skiko:skiko", version.ref = "skiko" }
+jetbrains-skiko-android-runtime-arm64 = { module = "org.jetbrains.skiko:skiko-android-runtime-arm64", version.ref = "skiko" }
+jetbrains-skiko-android-runtime-x64 = { module = "org.jetbrains.skiko:skiko-android-runtime-x64", version.ref = "skiko" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
