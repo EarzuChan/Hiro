@@ -28,7 +28,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":hiro"))
+    implementation(project(":compose"))
     implementation(project(":material3"))
     implementation(libs.androidx.core)
 }

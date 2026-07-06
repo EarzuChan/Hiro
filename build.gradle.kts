@@ -23,6 +23,6 @@ tasks.register("hiroBuildAll") {
 tasks.register("hiroPublishLocal") {
     group = "hiro"
     description = "发布 Hiro 的公开坐标到 Maven Local"
-    dependsOn(":skia:publishToMavenLocal", ":compose:publishToMavenLocal", ":material3:publishToMavenLocal", ":hiro:publishToMavenLocal")
+    dependsOn(":skia:publishToMavenLocal", ":compose:publishToMavenLocal", ":material3:publishToMavenLocal")
     dependsOn(gradle.includedBuild("hiro-gradle-plugin").task(":publishToMavenLocal"))
 }

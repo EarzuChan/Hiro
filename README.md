@@ -1,6 +1,7 @@
 # Hiro
 
-// Maven 吧唧稍后写
+[![Maven](https://img.shields.io/badge/Maven-EarzuChan-blue?style=flat-square)](https://earzuchan.github.io/maven/)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](https://opensource.org/license/MIT)
 
 将 Compose Multiplatform 的 Skia（Skiko）版使用在 Android 上。
 
@@ -19,16 +20,15 @@
 - Hiro Skia：对 Skia（Skiko）的打包，在安卓上提供 Skia Layer 和 SkiaSurfaceView。这也是 Hiro Compose 的根基。
 - Hiro Compose：对 Compose Multiplatform 的 UI/Runtime/Foundation 等的 Skia（Skiko）/Desktop（即 Jvm）进行打包，并补齐了在安卓上的体验（接入各种事件，并提供 HiroComposeView等）。
 - Hiro Material 3：对 Compose Multiplatform 的 Material 3 的 Skia（Skiko）/Desktop（即 Jvm）的打包与体验补齐。
-- Hiro Bundle：Facade，引入等于一次引入 Skia + Compose，为用户提供便利。 // 不再需要提供，发现用户引入 Hiro Compose 即可使用。
 - Hiro Gradle Plugin：帮助用户实现无感对第三方 Compose 包的 Skia（Skiko）/Desktop 模块转用（ Android 转用 Skia（Skiko）/Desktop，并阻断对 AndroidX Compose / Compose Multiplatform 的 Android 的依赖引入）。
 - Examples，几个使用例：普通 Hiro Compose、Hiro Compose Material 3、Hiro Compose + 第三方包。
 
 ## 用起来（Get Started）
 
 1. 创建标准安卓项目。
-2. 在项目根的 `settings.gradle.kts` 配置我的 Maven 仓库：xxx。
+2. 在项目根的 `settings.gradle.kts` 配置我的 Maven 仓库：在 `pluginManagement` 和 `dependencyResolutionManagement` 块内的 `repositories` 块内加一行 `maven("https://earzuchan.github.io/Maven/")`，注意：Maven 的 M 要大写。
 3. 引入和启用我的 Gradle 插件：在项目根的 `build.gradle.kts` 的 `plugins` 块内加：`id("me.earzuchan.hiro") apply false`，在安卓项目的 `build.gradle.kts` 的 `plugins` 块内加：`id("me.earzuchan.hiro")`。
-4. 引入 Hiro Compose：在安卓项目的 `build.gradle.kts` 的 `dependencies` 块内加 `implementation("me.earzuchan.hiro:compose:<VERSION>")`。
+4. 引入 Hiro Compose：在安卓项目的 `build.gradle.kts` 的 `dependencies` 块内加 `implementation("me.earzuchan.hiro:compose:<VERSION>")`。若需直接使用 Hiro Skia、Hiro Material 3，请引入 `me.earzuchan.hiro:skiko:<VERSION>`（Hiro Compose 内部已自动依赖 Skia，无需您为 Hiro Compose 再在您工程中引入 Hiro Skia），`me.earzuchan.hiro:material-3:<VERSION>`。
 5. 开始用：在您 Activity 里 `import me.earzuchan.hiro.compose.setHiroComposeContent`，然后在 `onCreate` 方法里如是写，即可使用。
    ```
    setHiroComposeContent {

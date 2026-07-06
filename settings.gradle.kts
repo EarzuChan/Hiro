@@ -26,8 +26,6 @@ include(":compose")
 project(":compose").projectDir = file("packages/compose")
 include(":material3")
 project(":material3").projectDir = file("packages/material3")
-include(":hiro")
-project(":hiro").projectDir = file("packages/hiro")
 
 include(":examples:compose-example")
 include(":examples:material3-example")
