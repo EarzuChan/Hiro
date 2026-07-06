@@ -42,7 +42,9 @@ val windowlessComposeJar = hiroProcessedJar("windowless-compose") {
         "WindowComposeSceneLayer",
         "DesktopUriHandler",
         "DesktopPlatformLocale",
-        "DisposableSaveableStateRegistry"
+        "DisposableSaveableStateRegistry",
+        "SaveableStateRegistryWrapper",
+        "androidx/compose/foundation/lazy/layout/DefaultLazyKey"
     )
 
     dropBinaryPattern(
