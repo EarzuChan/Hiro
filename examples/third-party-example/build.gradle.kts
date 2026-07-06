@@ -28,7 +28,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":hiro"))
+    implementation(project(":compose"))
     implementation(libs.androidx.core)
 
     // 3rd deps
