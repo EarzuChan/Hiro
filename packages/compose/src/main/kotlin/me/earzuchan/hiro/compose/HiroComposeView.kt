@@ -5,7 +5,6 @@ import android.content.res.Configuration
 import android.util.AttributeSet
 import android.util.Log
 import android.view.MotionEvent
-import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
@@ -60,6 +59,8 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
         Log.d(TAG, "啊被贴到了一个啊窗口上了")
 
+        scene.attachHostView(this)
+
         if (layer.surfaceView == null) layer.attachTo(this)
 
         layer.onHostResume()
@@ -68,6 +69,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
     override fun onDetachedFromWindow() {
         Log.d(TAG, "啊要从一个啊一个窗口上脱离了")
 
+        scene.detachHostView(this)
         close()
 
         super.onDetachedFromWindow()
