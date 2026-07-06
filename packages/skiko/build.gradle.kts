@@ -1,6 +1,5 @@
+import com.android.build.gradle.tasks.MergeSourceSetFolders
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
-import me.earzuchan.hiro.buildlogic.task.CheckSkikoAndroidJniLibsTask
-import me.earzuchan.hiro.buildlogic.task.UnpackSkikoAndroidRuntimeTask
 
 plugins {
     id("me.earzuchan.hiro.internal.build-logic")
@@ -8,22 +7,30 @@ plugins {
     `maven-publish`
 }
 
-val skikoAndroidRuntimeArm64 by configurations.registering {
+val skikoVersion = "0.144.6" // 对齐 CMP 所用的 Skiko 版本
+
+val skikoNativeArm64 by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
     isTransitive = false
 }
 
-val skikoAndroidRuntimeX64 by configurations.registering {
+val skikoNativeX64 by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
     isTransitive = false
 }
 
-val unpackSkikoAndroidRuntime by tasks.registering(UnpackSkikoAndroidRuntimeTask::class) {
-    arm64Runtime.from(skikoAndroidRuntimeArm64)
-    x64Runtime.from(skikoAndroidRuntimeX64)
-    outputDirectory.set(layout.buildDirectory.dir("generated/hiro/skikoAndroidJniLibs"))
+val generatedSkikoJniLibs = layout.buildDirectory.dir("generated/hiro/skikoAndroidJniLibs")
+
+val unzipSkikoNativeArm64 = tasks.register<Copy>("unzipSkikoNativeArm64") {
+    into(generatedSkikoJniLibs.map { it.dir("arm64-v8a") })
+    from({ skikoNativeArm64.files.map { zipTree(it) } }) { include("libskiko-android-arm64.so") }
+}
+
+val unzipSkikoNativeX64 = tasks.register<Copy>("unzipSkikoNativeX64") {
+    into(generatedSkikoJniLibs.map { it.dir("x86_64") })
+    from({ skikoNativeX64.files.map { zipTree(it) } }) { include("libskiko-android-x64.so") }
 }
 
 android {
@@ -41,36 +48,18 @@ android {
     }
 
     publishing { singleVariant("release") { withSourcesJar() } }
-}
 
-androidComponents {
-    onVariants { variant ->
-        val jniLibs = checkNotNull(variant.sources.jniLibs) {
-            "当前 Android 变体没有 jniLibs 源目录入口：${variant.name}"
-        }
-        jniLibs.addGeneratedSourceDirectory(
-            unpackSkikoAndroidRuntime,
-            UnpackSkikoAndroidRuntimeTask::outputDirectory,
-        )
-    }
+    sourceSets { getByName("main") { jniLibs.directories.add(generatedSkikoJniLibs.get().asFile.absolutePath) } }
 }
 
 dependencies {
-    api(libs.jetbrains.skiko)
-    add(skikoAndroidRuntimeArm64.name, libs.jetbrains.skiko.android.runtime.arm64)
-    add(skikoAndroidRuntimeX64.name, libs.jetbrains.skiko.android.runtime.x64)
+    api("org.jetbrains.skiko:skiko-android:$skikoVersion")
+
+    skikoNativeArm64("org.jetbrains.skiko:skiko-android-runtime-arm64:$skikoVersion")
+    skikoNativeX64("org.jetbrains.skiko:skiko-android-runtime-x64:$skikoVersion")
 }
 
-tasks.register<CheckSkikoAndroidJniLibsTask>("hiroCheckSkikoAndroidJniLibs") {
-    group = "hiro"
-    description = "检查 Skiko Android native runtime 已按 Android ABI 目录展开。"
-    dependsOn(unpackSkikoAndroidRuntime)
-    inputDirectory.set(unpackSkikoAndroidRuntime.flatMap { it.outputDirectory })
-}
-
-tasks.named("check") {
-    dependsOn("hiroCheckSkikoAndroidJniLibs")
-}
+tasks.withType<MergeSourceSetFolders>().configureEach { if (name.endsWith("JniLibFolders")) dependsOn(unzipSkikoNativeArm64, unzipSkikoNativeX64) }
 
 publishing {
     publications {

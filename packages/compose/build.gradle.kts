@@ -1,32 +1,96 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
-import me.earzuchan.hiro.buildlogic.task.BuildWindowlessComposeJarTask
-import me.earzuchan.hiro.buildlogic.task.CheckWindowlessComposeJarTask
+import me.earzuchan.hiro.buildlogic.hiroProcessedJar
 
 plugins {
     id("me.earzuchan.hiro.internal.build-logic")
-    id("me.earzuchan.hiro")
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
     `maven-publish`
 }
 
-val composeSkikoArtifacts by configurations.registering {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-    isTransitive = false
+val windowlessComposeJar = hiroProcessedJar("windowless-compose") {
+    outputFileName = "hiro-compose-skiko-windowless.jar"
+
+    // 版本对齐 CMP 1.11.1 大版本
+    artifacts(
+        "androidx.compose.runtime:runtime-desktop:1.11.2",
+        "androidx.compose.runtime:runtime-saveable-desktop:1.11.2",
+        "androidx.compose.runtime:runtime-retain-desktop:1.11.2",
+        "androidx.compose.runtime:runtime-annotation-jvm:1.11.2",
+        "org.jetbrains.compose.animation:animation-core-desktop:1.11.1",
+        "org.jetbrains.compose.animation:animation-desktop:1.11.1",
+        "org.jetbrains.compose.foundation:foundation-desktop:1.11.1",
+        "org.jetbrains.compose.foundation:foundation-layout-desktop:1.11.1",
+        "org.jetbrains.compose.ui:ui-backhandler-desktop:1.11.1",
+        "org.jetbrains.compose.ui:ui-desktop:1.11.1",
+        "org.jetbrains.compose.ui:ui-geometry-desktop:1.11.1",
+        "org.jetbrains.compose.ui:ui-graphics-desktop:1.11.1",
+        "org.jetbrains.compose.ui:ui-text-desktop:1.11.1",
+        "org.jetbrains.compose.ui:ui-unit-desktop:1.11.1",
+        "org.jetbrains.compose.ui:ui-util-desktop:1.11.1"
+    )
+
+    dropPathPrefix("androidx/compose/ui/awt/")
+
+    dropPathFragment(
+        "Awt",
+        "Swing",
+        "JPopup",
+        "ComposeContainer",
+        "ComposeSceneMediator",
+        "DesktopComposeSceneLayer",
+        "WindowComposeSceneLayer",
+        "DesktopUriHandler",
+        "DesktopPlatformLocale",
+        "DisposableSaveableStateRegistry"
+    )
+
+    dropBinaryPattern(
+        "androidx/compose/ui/platform/AndroidComposeView",
+        "androidx/compose/ui/platform/AndroidOwner",
+        "androidx/compose/ui/platform/AndroidUiDispatcher",
+        "androidx/compose/ui/platform/RenderNodeLayer",
+        "androidx/compose/ui/platform/ViewLayer",
+        "androidx/compose/ui/graphics/AndroidCanvas",
+        "androidx/compose/ui/graphics/AndroidPaint",
+        "android/graphics/RuntimeShader",
+        "android/graphics/RenderEffect",
+        "java/awt/",
+        "javax/swing/",
+        "javafx/",
+        "androidx/compose/ui/awt/",
+        "org/jetbrains/skiko/awt/",
+        "org/jetbrains/skiko/MainUIDispatcher",
+        "androidx/compose/ui/platform/DesktopUriHandler"
+    )
+
+    requireJarEntry(
+        "androidx/compose/ui/scene/CanvasLayersComposeScene_skikoKt.class",
+        "androidx/compose/ui/scene/ComposeSceneRecomposer.class",
+        "androidx/compose/ui/graphics/SkiaBackedCanvas.class",
+        "androidx/compose/ui/graphics/SkiaBackedCanvas_skikoKt.class",
+        "androidx/compose/ui/ComposeUiFlags_skikoKt.class",
+        "androidx/compose/ui/SkikoComposeUiFlags.class",
+        "androidx/compose/ui/text/intl/PlatformLocaleKt.class"
+    )
+
+    forbidJarEntryFragment(
+        "AndroidComposeView",
+        "android/graphics/RuntimeShader",
+        "android/graphics/RenderEffect",
+        "java/awt/",
+        "javax/swing/",
+        "javafx/",
+        "androidx/compose/ui/awt/",
+        "org/jetbrains/skiko/awt/",
+        "androidx/compose/ui/platform/GlobalSnapshotManager_desktopKt.class",
+        "androidx/compose/ui/Actuals_desktopKt.class",
+        "androidx/compose/ui/platform/PlatformUriHandler_desktopKt.class",
+        "androidx/compose/ui/platform/DesktopUriHandler",
+        "androidx/compose/ui/text/intl/DesktopPlatformLocale",
+        "androidx/compose/ui/platform/DisposableSaveableStateRegistry"
+    )
 }
-
-// TODO：呃呃，这不正规吧
-val buildWindowlessComposeJar by tasks.registering(BuildWindowlessComposeJarTask::class) {
-    inputJars.from(composeSkikoArtifacts)
-    outputJar.set(layout.buildDirectory.file("generated/hiro/windowless-compose/hiro-compose-skiko-windowless.jar"))
-
-    forbiddenPathPrefixes.set(listOf("androidx/compose/ui/awt/"))
-    forbiddenPathFragments.set(listOf("Awt", "Swing", "JPopup", "ComposeContainer", "ComposeSceneMediator", "DesktopComposeSceneLayer", "WindowComposeSceneLayer", "DesktopUriHandler", "DesktopPlatformLocale", "DisposableSaveableStateRegistry"))
-    forbiddenBinaryPatterns.set(listOf("androidx/compose/ui/platform/AndroidComposeView", "androidx/compose/ui/platform/AndroidOwner", "androidx/compose/ui/platform/AndroidUiDispatcher", "androidx/compose/ui/platform/RenderNodeLayer", "androidx/compose/ui/platform/ViewLayer", "androidx/compose/ui/graphics/AndroidCanvas", "androidx/compose/ui/graphics/AndroidPaint", "android/graphics/RuntimeShader", "android/graphics/RenderEffect", "java/awt/", "javax/swing/", "javafx/", "androidx/compose/ui/awt/", "org/jetbrains/skiko/awt/", "org/jetbrains/skiko/MainUIDispatcher", "androidx/compose/ui/platform/DesktopUriHandler"))
-}
-
-val windowlessComposeJar = files(buildWindowlessComposeJar.flatMap { it.outputJar }).builtBy(buildWindowlessComposeJar)
 
 android {
     namespace = "${HiroBuildConfig.namespace}.compose"
@@ -45,41 +109,25 @@ android {
     publishing { singleVariant("release") { withSourcesJar() } }
 }
 
-dependencies {
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.animation.core.desktop)
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.animation.desktop)
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.foundation.desktop)
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.foundation.layout.desktop)
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.ui.backhandler.desktop)
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.ui.desktop)
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.ui.geometry.desktop)
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.ui.graphics.desktop)
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.ui.text.desktop)
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.ui.unit.desktop)
-    add(composeSkikoArtifacts.name, libs.jetbrains.compose.ui.util.desktop)
-
-    api(project(":skiko"))
-    api(windowlessComposeJar)
-    api(libs.jetbrains.compose.runtime)
-    api(libs.jetbrains.compose.runtime.saveable)
-    api("androidx.compose.runtime:runtime-retain:1.11.2")
-    api("androidx.lifecycle:lifecycle-viewmodel:2.9.4")
-    api("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.4")
-    api("androidx.navigationevent:navigationevent:1.0.1")
-    api(libs.androidx.annotation.jvm)
-    api(libs.androidx.collection.jvm)
-
-    runtimeOnly("org.jetbrains.kotlinx:atomicfu-jvm:0.28.0") // 有被CMP所依赖
+val classicExclude = Action<ExternalModuleDependency>  {
+    exclude(group = "androidx.compose.runtime")
+    exclude(group = "org.jetbrains.compose.runtime")
+    exclude(group = "androidx.collection")
 }
 
-val hiroCheckComposeSkikoPrototype by tasks.registering(CheckWindowlessComposeJarTask::class) {
-    group = "hiro"
-    description = "检查 Compose Skiko Android 原型所需类已进入窗口无关产物。"
-    dependsOn(buildWindowlessComposeJar)
-    inputJar.set(buildWindowlessComposeJar.flatMap { it.outputJar })
+dependencies {
+    api(project(":skiko"))
 
-    requiredEntries.set(listOf("androidx/compose/ui/scene/CanvasLayersComposeScene_skikoKt.class", "androidx/compose/ui/scene/ComposeSceneRecomposer.class", "androidx/compose/ui/graphics/SkiaBackedCanvas.class", "androidx/compose/ui/graphics/SkiaBackedCanvas_skikoKt.class", "androidx/compose/ui/ComposeUiFlags_skikoKt.class", "androidx/compose/ui/SkikoComposeUiFlags.class", "androidx/compose/ui/text/intl/PlatformLocaleKt.class"))
-    forbiddenFragments.set(listOf("AndroidComposeView", "android/graphics/RuntimeShader", "android/graphics/RenderEffect", "java/awt/", "javax/swing/", "javafx/", "androidx/compose/ui/awt/", "org/jetbrains/skiko/awt/", "androidx/compose/ui/platform/GlobalSnapshotManager_desktopKt.class", "androidx/compose/ui/Actuals_desktopKt.class", "androidx/compose/ui/platform/PlatformUriHandler_desktopKt.class", "androidx/compose/ui/platform/DesktopUriHandler", "androidx/compose/ui/text/intl/DesktopPlatformLocale", "androidx/compose/ui/platform/DisposableSaveableStateRegistry"))
+    // CMP related
+    api(windowlessComposeJar.files)
+    api("androidx.navigationevent:navigationevent:1.0.1", dependencyConfiguration = classicExclude)
+    api("androidx.savedstate:savedstate-compose:1.4.0", dependencyConfiguration = classicExclude)
+    api("androidx.lifecycle:lifecycle-runtime-compose:2.9.4", dependencyConfiguration = classicExclude)
+    api("androidx.lifecycle:lifecycle-viewmodel:2.9.4", dependencyConfiguration = classicExclude)
+    api("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.4", dependencyConfiguration = classicExclude)
+    api("androidx.annotation:annotation-jvm:1.10.0")
+    api("androidx.collection:collection-jvm:1.6.0")
+    runtimeOnly("org.jetbrains.kotlinx:atomicfu-jvm:0.28.0") // 有被CMP所依赖
 }
 
 publishing {
@@ -92,4 +140,4 @@ publishing {
     }
 }
 
-tasks.named("check") { dependsOn(hiroCheckComposeSkikoPrototype) }
+tasks.named("check") { dependsOn(windowlessComposeJar) }

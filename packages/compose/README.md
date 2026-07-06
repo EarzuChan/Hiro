@@ -1,10 +1,6 @@
 # me.earzuchan.hiro:compose
 
-这里是 Compose Skiko Android 的主体包占位模块。
+打包经改造的 Compose Multiplatform 的 UI/Runtime/Foundation 等的 Skiko/Desktop（即 Jvm，背后也是 Skiko）。
+顶替冲突项目，补齐安卓体验（接入各种事件，并提供 HiroComposeView、HiroActivityExtension）。
 
-未来内容：
-- Compose Runtime / UI / Text / Graphics / Foundation / Animation 聚合
-- Android target 接入 `commonMain + skikoMain + androidSkikoMain`
-- `HiroComposeView`、`HiroActivity` 与 Android Host 胶水代码
-
-Hiro 不发布 Legacy Material。
+注：androidx.compose.ui.*/ 是我们所做的顶替工作。

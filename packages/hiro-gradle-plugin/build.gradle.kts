@@ -1,3 +1,4 @@
+import me.earzuchan.hiro.buildlogic.HiroBuildConfig
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,6 +8,10 @@ plugins {
     `maven-publish`
 }
 
+val gradlePluginNamespace = "${HiroBuildConfig.namespace}.gradleplugin"
+group = gradlePluginNamespace
+version = HiroBuildConfig.version
+
 java {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
@@ -14,19 +19,13 @@ java {
 
 kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_11) } }
 
-sourceSets {
-    main {
-        kotlin.srcDir("../../build-logic/src/hiroGradlePlugin/kotlin")
-    }
-}
-
 dependencies { implementation(gradleApi()) }
 
 gradlePlugin {
     plugins {
         create("hiro") {
-            id = "me.earzuchan.hiro"
-            implementationClass = "me.earzuchan.hiro.gradle.HiroGradlePlugin"
+            id = HiroBuildConfig.namespace // 这里为了用户引入，仍用主NS
+            implementationClass = "$gradlePluginNamespace.HiroGradlePlugin"
             displayName = "Hiro Compose Skiko Android"
             description = "配置 Hiro Compose Skiko Android 的依赖替换和兼容性检查"
         }

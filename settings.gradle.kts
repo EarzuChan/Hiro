@@ -1,5 +1,6 @@
 pluginManagement {
     includeBuild("build-logic")
+    includeBuild("packages/hiro-gradle-plugin")
 
     repositories {
         google()
@@ -21,20 +22,13 @@ rootProject.name = "Hiro"
 
 include(":skiko")
 project(":skiko").projectDir = file("packages/skiko")
-
 include(":compose")
 project(":compose").projectDir = file("packages/compose")
-
 include(":material3")
 project(":material3").projectDir = file("packages/material3")
-
 include(":hiro")
 project(":hiro").projectDir = file("packages/hiro")
 
-include(":hiro-gradle-plugin")
-project(":hiro-gradle-plugin").projectDir = file("packages/hiro-gradle-plugin")
-
-include(":samples:fullscreen")
-include(":samples:material3-sample")
-project(":samples:material3-sample").projectDir = file("samples/material3")
-include(":samples:third-party-libs")
+include(":examples:compose-example")
+include(":examples:material3-example")
+include(":examples:third-party-example")
