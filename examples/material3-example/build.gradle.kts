@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-val appNamespace = "${HiroBuildConfig.namespace}.examples.material3"
+val appNamespace = "${HiroBuildConfig.namespace}.example.material3"
 
 android {
     namespace = appNamespace
