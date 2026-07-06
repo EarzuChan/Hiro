@@ -1,6 +1,6 @@
-package me.earzuchan.hiro.skiko
+package me.earzuchan.hiro.skia
 
-data class HiroSkikoLayerConfig(
+data class HiroSkiaLayerConfig(
     val eglContextClientVersion: Int = 3,
     val redBits: Int = 8,
     val greenBits: Int = 8,

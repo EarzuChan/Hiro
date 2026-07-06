@@ -1,4 +1,4 @@
-package me.earzuchan.hiro.skiko
+package me.earzuchan.hiro.skia
 
 import android.opengl.GLSurfaceView
 import javax.microedition.khronos.egl.EGL10
@@ -6,7 +6,7 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.egl.EGLDisplay
 import kotlin.math.abs
 
-internal class HiroEglConfigChooser(private val layerConfig: HiroSkikoLayerConfig) : GLSurfaceView.EGLConfigChooser {
+internal class HiroEglConfigChooser(private val layerConfig: HiroSkiaLayerConfig) : GLSurfaceView.EGLConfigChooser {
     override fun chooseConfig(egl: EGL10, display: EGLDisplay): EGLConfig {
         val configs = findConfigs(egl, display)
         return configs.minWithOrNull(compareBy { scoreConfig(egl, display, it) }) ?: error("无法找到可用的 EGL 配置")

@@ -10,5 +10,5 @@ internal object HiroAndroidUiDispatcher : CoroutineDispatcher() {
 
     override fun isDispatchNeeded(context: CoroutineContext) = Looper.myLooper() != handler.looper
 
-    override fun dispatch(context: CoroutineContext, block: Runnable) = check(handler.post(block)) { "无法把 Compose Skiko Android 任务投递到主线程" }
+    override fun dispatch(context: CoroutineContext, block: Runnable) = check(handler.post(block)) { "无法把 Compose Skia Android 任务投递到主线程" }
 }

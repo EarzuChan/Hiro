@@ -2,7 +2,7 @@
 
 捆绑包，只引入：
 
-- `me.earzuchan.hiro:skiko`
+- `me.earzuchan.hiro:skia`
 - `me.earzuchan.hiro:compose`
 
 无业务逻辑。

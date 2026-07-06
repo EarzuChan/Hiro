@@ -13,7 +13,7 @@ import me.earzuchan.hiro.compose.internal.HiroAndroidUiDispatcher
 import org.jetbrains.skia.Canvas as SkiaCanvas
 
 @OptIn(InternalComposeUiApi::class)
-class HiroSkikoComposeScene(private val scheduleFrame: () -> Unit, density: Density = Density(1f), layoutDirection: LayoutDirection = LayoutDirection.Ltr) : AutoCloseable {
+class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, density: Density = Density(1f), layoutDirection: LayoutDirection = LayoutDirection.Ltr) : AutoCloseable {
     private val dispatcher = HiroAndroidUiDispatcher
     private val platformContext = HiroAndroidPlatformContext()
     private val scene = CanvasLayersComposeScene(density = density, layoutDirection = layoutDirection, coroutineContext = dispatcher, platformContext = platformContext, invalidate = scheduleFrame)
@@ -22,7 +22,7 @@ class HiroSkikoComposeScene(private val scheduleFrame: () -> Unit, density: Dens
     private var currentLayoutDirection: LayoutDirection = layoutDirection
 
     companion object {
-        private const val TAG = "HiroSkikoComposeScene"
+        private const val TAG = "HiroSkiaComposeScene"
     }
 
     init {
@@ -40,17 +40,20 @@ class HiroSkikoComposeScene(private val scheduleFrame: () -> Unit, density: Dens
     fun render(canvas: SkiaCanvas, width: Int, height: Int, density: Density, layoutDirection: LayoutDirection, nanoTime: Long) {
         // TIPS：因为是渲染，可能高频，不LOG
 
-        check(width >= 0 && height >= 0) { "Compose Skiko Android 渲染尺寸不能为负数" }
+        check(width >= 0 && height >= 0) { "Compose Skia Android 渲染尺寸不能为负数" }
 
         val nextSize = IntSize(width, height)
+
         if (currentSize != nextSize) {
             currentSize = nextSize
             scene.size = nextSize
         }
+
         if (currentDensity != density) {
             currentDensity = density
             scene.density = density
         }
+
         if (currentLayoutDirection != layoutDirection) {
             currentLayoutDirection = layoutDirection
             scene.layoutDirection = layoutDirection

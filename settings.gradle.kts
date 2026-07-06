@@ -20,8 +20,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "Hiro"
 
-include(":skiko")
-project(":skiko").projectDir = file("packages/skiko")
+include(":skia")
+project(":skia").projectDir = file("packages/skia")
 include(":compose")
 project(":compose").projectDir = file("packages/compose")
 include(":material3")

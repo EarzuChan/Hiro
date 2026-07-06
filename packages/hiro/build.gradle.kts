@@ -24,7 +24,7 @@ android {
 }
 
 dependencies {
-    api(project(":skiko"))
+    api(project(":skia"))
     api(project(":compose"))
 }
 

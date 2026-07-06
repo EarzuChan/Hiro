@@ -1,4 +1,4 @@
-package me.earzuchan.hiro.skiko
+package me.earzuchan.hiro.skia
 
 import android.util.Log
 import android.view.ViewGroup
@@ -8,12 +8,12 @@ fun interface HiroSkiaRenderDelegate {
     fun onRender(canvas: Canvas, width: Int, height: Int, nanoTime: Long)
 }
 
-class HiroSkiaLayer(private val config: HiroSkikoLayerConfig = HiroSkikoLayerConfig()) : AutoCloseable {
+class HiroSkiaLayer(private val config: HiroSkiaLayerConfig = HiroSkiaLayerConfig()) : AutoCloseable {
     private var container: ViewGroup? = null
 
     var renderDelegate: HiroSkiaRenderDelegate? = null
 
-    var surfaceView: HiroSkikoSurfaceView? = null; private set
+    var surfaceView: HiroSkiaSurfaceView? = null; private set
 
     companion object{
         private const val TAG = "HiroSkiaLayer"
@@ -23,12 +23,12 @@ class HiroSkiaLayer(private val config: HiroSkikoLayerConfig = HiroSkikoLayerCon
         Log.d(TAG, "啊创建一个哦")
     }
 
-    fun attachTo(mambaGroup: ViewGroup): HiroSkikoSurfaceView {
+    fun attachTo(mambaGroup: ViewGroup): HiroSkiaSurfaceView {
         Log.d(TAG, "啊将被贴附到啊一个$mambaGroup")
 
         detach()
 
-        val view = HiroSkikoSurfaceView(context = mambaGroup.context, layer = this, config = config)
+        val view = HiroSkiaSurfaceView(context = mambaGroup.context, layer = this, config = config)
         mambaGroup.addView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
         container = mambaGroup
@@ -38,7 +38,7 @@ class HiroSkiaLayer(private val config: HiroSkikoLayerConfig = HiroSkikoLayerCon
         return view
     }
 
-    fun configureSurfaceView(action: HiroSkikoSurfaceView.() -> Unit) {
+    fun configureSurfaceView(action: HiroSkiaSurfaceView.() -> Unit) {
         Log.d(TAG, "啊将配置一个SurfaceView")
 
         surfaceView?.action()

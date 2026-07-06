@@ -10,12 +10,12 @@ import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
-import me.earzuchan.hiro.skiko.HiroSkiaLayer
-import me.earzuchan.hiro.skiko.HiroSkiaRenderDelegate
+import me.earzuchan.hiro.skia.HiroSkiaLayer
+import me.earzuchan.hiro.skia.HiroSkiaRenderDelegate
 
 class HiroComposeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
     private val layer = HiroSkiaLayer()
-    private val scene = HiroSkikoComposeScene(scheduleFrame = { layer.needRender() }, density = currentDensity(), layoutDirection = currentLayoutDirection())
+    private val scene = HiroSkiaComposeScene(scheduleFrame = { layer.needRender() }, density = currentDensity(), layoutDirection = currentLayoutDirection())
     private var closed = false
 
     companion object {
