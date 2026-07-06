@@ -4,18 +4,30 @@ import android.content.Context
 import android.content.res.Configuration
 import android.util.AttributeSet
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputRouter
+import me.earzuchan.hiro.compose.internal.input.HiroComposeInputSink
+import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
 import me.earzuchan.hiro.skia.HiroSkiaLayer
 import me.earzuchan.hiro.skia.HiroSkiaRenderDelegate
 
 class HiroComposeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
     private val layer = HiroSkiaLayer()
+
     private val scene = HiroSkiaComposeScene(scheduleFrame = { layer.needRender() }, density = currentDensity(), layoutDirection = currentLayoutDirection())
+
+    private val inputRouter = HiroAndroidInputRouter(object : HiroComposeInputSink {
+        override fun sendPointerEvent(event: HiroComposePointerEvent): Boolean = scene.sendPointerEvent(event)
+
+        override fun cancelPointerInput() = scene.cancelPointerInput()
+    })
+
     private var closed = false
 
     companion object {
@@ -85,6 +97,19 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
         layer.needRender()
     }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (closed) return false
+
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) requestFocus()
+
+        val handled = inputRouter.dispatchTouchEvent(event)
+        if (handled) return true
+
+        return super.dispatchTouchEvent(event)
+    }
+
+    // TODO：后续接入dispatchHoverEvent，真鼠标和触控笔悬停；dispatchGenericMotionEvent，虚拟触控板等玩意儿；dispatchKeyEvent，服务硬键盘、焦点和快捷键
 
     override fun close() {
         if (closed) return

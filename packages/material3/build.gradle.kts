@@ -7,16 +7,17 @@ plugins {
     `maven-publish`
 }
 
-val material3Version = "1.11.0-alpha07"
-
 val windowlessMaterial3Jar = hiroProcessedJar("windowless-material3") {
     outputFileName = "hiro-material3-windowless.jar"
 
-    artifact("org.jetbrains.compose.material3:material3-desktop:$material3Version")
+    artifact("org.jetbrains.compose.material3:material3-desktop:1.11.0-alpha07")
 
     dropPathFragment("Awt", "Swing", "JPopup", "ComposeContainer", "ComposeSceneMediator", "DesktopComposeSceneLayer", "WindowComposeSceneLayer")
+
     dropBinaryPattern("androidx/compose/ui/platform/AndroidComposeView", "androidx/compose/ui/platform/AndroidOwner", "androidx/compose/ui/platform/RenderNodeLayer", "androidx/compose/ui/platform/ViewLayer", "android/graphics/RuntimeShader", "android/graphics/RenderEffect", "java/awt/", "javax/swing/", "javafx/", "androidx/compose/ui/awt/", "org/jetbrains/skiko/awt/")
+
     requireJarEntry("androidx/compose/material3/ButtonKt.class", "androidx/compose/material3/MaterialThemeKt.class")
+
     forbidJarEntryFragment("AndroidComposeView", "android/graphics/RuntimeShader", "android/graphics/RenderEffect", "java/awt/", "javax/swing/", "javafx/", "androidx/compose/ui/awt/", "org/jetbrains/skiko/awt/")
 }
 

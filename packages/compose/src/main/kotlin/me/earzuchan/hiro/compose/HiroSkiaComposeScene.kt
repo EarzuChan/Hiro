@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import me.earzuchan.hiro.compose.internal.HiroAndroidPlatformContext
 import me.earzuchan.hiro.compose.internal.HiroAndroidUiDispatcher
+import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
 import org.jetbrains.skia.Canvas as SkiaCanvas
 
 @OptIn(InternalComposeUiApi::class)
@@ -33,6 +34,18 @@ class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, density: Densi
         Log.d(TAG,"啊被设了内容，好喜欢哥哥的大内容")
 
         scene.setContent(content = content)
+        scheduleFrame()
+    }
+
+    internal fun sendPointerEvent(event: HiroComposePointerEvent): Boolean {
+        scene.sendPointerEvent(event.type, event.pointers, event.buttons, event.keyboardModifiers, event.scrollDelta, event.timeMillis, event.nativeEvent, event.changedButton, event.scaleGestureFactor, event.panGestureOffset)
+        scheduleFrame()
+
+        return true
+    }
+
+    internal fun cancelPointerInput() {
+        scene.cancelPointerInput()
         scheduleFrame()
     }
 
