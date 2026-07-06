@@ -1,6 +1,7 @@
 package me.earzuchan.hiro.material3.ripple
 
 import android.os.SystemClock
+import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -24,11 +25,11 @@ internal class HiroRippleSession(private var rippleSize: Size, private var touch
     private val finishSignal = CompletableDeferred<Unit>()
     private val progress = Animatable(0f)
     private val startedAtMillis = SystemClock.uptimeMillis()
-    private var noisePhaseMillis by mutableFloatStateOf(startedAtMillis.toFloat())
+    private var kiraKiraPhaseMillis by mutableFloatStateOf(startedAtMillis.toFloat())
 
     val currentProgress: Float get() = progress.value
 
-    val currentNoisePhaseMillis: Float get() = noisePhaseMillis
+    val currentKiraKiraPhaseMillis: Float get() = kiraKiraPhaseMillis
 
     val currentTouch: Offset get() = touch
 
@@ -42,13 +43,15 @@ internal class HiroRippleSession(private var rippleSize: Size, private var touch
     }
 
     fun finish() {
-        finishSignal.complete(Unit)
+        if (finishSignal.complete(Unit)) Log.d(TAG, "啊一个会话爱我别肘：$startedAtMillis")
     }
 
     suspend fun play(invalidate: () -> Unit) = coroutineScope {
-        val noiseJob = launch {
+        Log.d(TAG, "啊开始一个会话啊：$startedAtMillis")
+
+        val kiraKiraJob = launch {
             while (isActive) {
-                withFrameNanos { frameNanos -> noisePhaseMillis = frameNanos / 1_000_000f }
+                withFrameNanos { frameNanos -> kiraKiraPhaseMillis = frameNanos / 1_000_000f }
                 invalidate()
             }
         }
@@ -64,12 +67,14 @@ internal class HiroRippleSession(private var rippleSize: Size, private var touch
         try {
             progressJob.join()
         } finally {
-            noiseJob.cancel()
-            joinAll(noiseJob)
+            kiraKiraJob.cancel()
+            joinAll(kiraKiraJob)
+            Log.d(TAG, "啊一个会话寄！$startedAtMillis")
         }
     }
 
     companion object {
+        private const val TAG = "HiroRippleSession"
         const val ENTER_DURATION = 450
         const val EXIT_DURATION = 375
     }

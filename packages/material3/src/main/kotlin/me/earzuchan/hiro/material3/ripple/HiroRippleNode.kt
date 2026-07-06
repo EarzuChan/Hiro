@@ -1,5 +1,6 @@
 package me.earzuchan.hiro.material3.ripple
 
+import android.util.Log
 import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -33,7 +34,13 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     private var rippleSize = Size.Zero
     private val pendingInteractions = mutableListOf<PressInteraction>()
 
+    companion object {
+        private const val TAG = "HiroRippleNode"
+    }
+
     override fun onAttach() {
+        Log.d(TAG, "啊一个地道M3水波")
+
         coroutineScope.launch {
             interactionSource.interactions.collect { interaction ->
                 when (interaction) {
@@ -46,8 +53,11 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     }
 
     override fun onRemeasured(size: IntSize) {
+        val nextRippleSize = size.toSize()
+        if (rippleSize != nextRippleSize) Log.d(TAG, "啊节点尺寸变了啊一个：${nextRippleSize.width}x${nextRippleSize.height}")
+
         hasValidSize = true
-        rippleSize = size.toSize()
+        rippleSize = nextRippleSize
         targetRadius = with(requireDensity()) { if (radius.isUnspecified) getHiroRippleEndRadius(bounded, rippleSize) else radius.toPx() }
         ripples.values.forEach { session -> session.updateGeometry(rippleSize, targetRadius) }
         pendingInteractions.forEach(::handlePressInteraction)
@@ -61,6 +71,8 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     }
 
     override fun onDetach() {
+        Log.d(TAG, "啊一个水波纹肘完谢幕有感觉吗")
+
         ripples.values.forEach { session -> session.finish() }
         ripples.clear()
     }
@@ -80,6 +92,8 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     }
 
     private fun addRipple(interaction: PressInteraction.Press) {
+        Log.d(TAG, "按下啊要高潮（指动画这一块）了：${interaction.pressPosition}")
+
         ripples.values.forEach { session -> session.finish() }
 
         val touch = if (bounded) interaction.pressPosition else rippleSize.center
@@ -99,6 +113,8 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     }
 
     private fun removeRipple(interaction: PressInteraction.Press) {
+        Log.d(TAG, "啊一个波纹滚回山中去捏")
+
         ripples[interaction]?.finish()
     }
 
@@ -127,7 +143,7 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
                     origin = session.currentOrigin,
                     radius = session.currentRadius,
                     progress = session.currentProgress,
-                    noisePhaseMillis = session.currentNoisePhaseMillis,
+                    kiraKiraPhaseMillis = session.currentKiraKiraPhaseMillis,
                     color = modulatedColor,
                 )
                 drawRect(brush = brush, size = size)

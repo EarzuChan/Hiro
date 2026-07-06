@@ -7,9 +7,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -37,7 +39,7 @@ class MambaActivity : Activity() {
 
             MaterialTheme(if (useDark) darkColorScheme() else lightColorScheme()) {
                 Column(Modifier.background(MaterialTheme.colorScheme.background).safeContentPadding().fillMaxSize(), Arrangement.spacedBy(40.dp), Alignment.CenterHorizontally) {
-                    Box(Modifier.size(400.dp).clickable { })
+                    Box(Modifier.width(400.dp).weight(1f).clickable { })
 
                     Button({ useDark = !useDark }) { Text("切换颜色模式") }
                 }
