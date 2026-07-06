@@ -29,7 +29,7 @@ internal fun DisposableSaveableStateRegistry(id: String, savedStateRegistryOwner
         androidxRegistry.registerSavedStateProvider(key) { saveableStateRegistry.performSave().toBundle() }
         true
     } catch (_: IllegalArgumentException) {
-        // TODO：多个 Android-Skiko Compose 容器共用同一 saveable id 时，应提供稳定且可诊断的隔离策略
+        // TODO：多个 Android-Skia Compose 容器共用同一 saveable id 时，应提供稳定且可诊断的隔离策略
         false
     }
 

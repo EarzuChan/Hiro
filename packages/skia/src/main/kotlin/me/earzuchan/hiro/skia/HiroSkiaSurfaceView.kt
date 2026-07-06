@@ -1,5 +1,6 @@
-package me.earzuchan.hiro.skiko
+package me.earzuchan.hiro.skia
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
@@ -12,8 +13,9 @@ import java.nio.IntBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-class HiroSkikoSurfaceView internal constructor(context: Context, layer: HiroSkiaLayer, config: HiroSkikoLayerConfig) : GLSurfaceView(context) {
-    private val renderer = HiroSkikoSurfaceRenderer(layer, config, ::requestNextFrame)
+@SuppressLint("ViewConstructor") // 不许在XML里用它
+class HiroSkiaSurfaceView internal constructor(context: Context, layer: HiroSkiaLayer, config: HiroSkiaLayerConfig) : GLSurfaceView(context) {
+    private val renderer = HiroSkiaSurfaceRenderer(layer, config, ::requestNextFrame)
     private val choreographer: Choreographer by lazy(LazyThreadSafetyMode.NONE) { Choreographer.getInstance() }
     private val frameCallback = Choreographer.FrameCallback(::doFrame)
 
@@ -23,7 +25,7 @@ class HiroSkikoSurfaceView internal constructor(context: Context, layer: HiroSki
     private var released: Boolean = false
 
     companion object{
-        private const val TAG = "HiroSkikoSurfaceView"
+        private const val TAG = "HiroSkiaSurfaceView"
     }
 
     init {
@@ -104,7 +106,7 @@ class HiroSkikoSurfaceView internal constructor(context: Context, layer: HiroSki
     private fun requestNextFrame() = scheduleFrame()
 }
 
-private class HiroSkikoSurfaceRenderer(private val layer: HiroSkiaLayer, private val config: HiroSkikoLayerConfig, private val requestNextFrame: () -> Unit) : GLSurfaceView.Renderer {
+private class HiroSkiaSurfaceRenderer(private val layer: HiroSkiaLayer, private val config: HiroSkiaLayerConfig, private val requestNextFrame: () -> Unit) : GLSurfaceView.Renderer {
     private val pictureLock = Any()
 
     @Volatile
@@ -123,7 +125,7 @@ private class HiroSkikoSurfaceRenderer(private val layer: HiroSkiaLayer, private
     private var released: Boolean = false
 
     companion object{
-        private const val TAG = "HiroSkikoSurfaceRenderer"
+        private const val TAG = "HiroSkiaSurfaceRenderer"
     }
 
     init {

@@ -9,7 +9,7 @@ plugins {
 }
 
 val windowlessComposeJar = hiroProcessedJar("windowless-compose") {
-    outputFileName = "hiro-compose-skiko-windowless.jar"
+    outputFileName = "hiro-compose-skia-windowless.jar"
 
     // 版本对齐 CMP 1.11.1 大版本
     artifacts(
@@ -116,7 +116,7 @@ val classicExclude = Action<ExternalModuleDependency>  {
 }
 
 dependencies {
-    api(project(":skiko"))
+    api(project(":skia"))
 
     // CMP related
     api(windowlessComposeJar.files)
