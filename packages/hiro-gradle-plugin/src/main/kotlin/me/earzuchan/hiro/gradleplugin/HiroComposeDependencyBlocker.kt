@@ -26,7 +26,7 @@ internal object HiroComposeDependencyBlocker {
 
                 if (composeDependencies.isEmpty()) return
 
-                logger.error("Hiro：用户在 ${configuration.name} 直接声明了官方 Compose 坐标，构建终止")
+                logger.error("Hiro Gradle 插件：用户在 ${configuration.name} 直接声明了官方 Compose 坐标，构建终止")
 
                 throw GradleException(
                     buildString {
@@ -48,7 +48,7 @@ internal object HiroComposeDependencyBlocker {
             if (HiroDependencyPolicy.isComposeLibrary(dependency.group)) {
                 val removed = "$owner -> ${dependency.group}:${dependency.name}:${dependency.versionConstraint.displayName}"
                 if (loggedRemovedDependencies.add(removed)) {
-                    logger.lifecycle("Hiro：从 $owner 移除官方 Compose 传递依赖 ${dependency.group}:${dependency.name}:${dependency.versionConstraint.displayName}")
+                    logger.lifecycle("Hiro Gradle 插件：从 $owner 移除官方 Compose 传递依赖 ${dependency.group}:${dependency.name}:${dependency.versionConstraint.displayName}")
                 }
                 iterator.remove()
             }
@@ -58,7 +58,7 @@ internal object HiroComposeDependencyBlocker {
     fun logBlockedComposeModule(id: ModuleVersionIdentifier) {
         val module = "${id.group}:${id.name}:${id.version}"
         if (loggedBlockedModules.add(module)) {
-            logger.lifecycle("Hiro：阻断官方 Compose 模块 $module 进入 Hiro Android classpath")
+            logger.lifecycle("Hiro Gradle 插件：阻断官方 Compose 模块 $module 进入 Hiro Android classpath")
         }
     }
 }
