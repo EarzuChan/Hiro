@@ -1,6 +1,7 @@
 package me.earzuchan.hiro.compose
 
 import android.util.Log
+import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.graphics.asComposeCanvas
@@ -36,6 +37,10 @@ class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, density: Densi
         scene.setContent(content = content)
         scheduleFrame()
     }
+
+    internal fun attachHostView(view: View) = platformContext.attachHostView(view)
+
+    internal fun detachHostView(view: View) = platformContext.detachHostView(view)
 
     internal fun sendPointerEvent(event: HiroComposePointerEvent): Boolean {
         scene.sendPointerEvent(event.type, event.pointers, event.buttons, event.keyboardModifiers, event.scrollDelta, event.timeMillis, event.nativeEvent, event.changedButton, event.scaleGestureFactor, event.panGestureOffset)
