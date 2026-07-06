@@ -14,7 +14,7 @@ internal class HiroResolutionDiagnostics(private val project: Project, private v
         val resolvedConfiguration = collect(configuration)
         resolvedConfigurations[configuration.name] = resolvedConfiguration
 
-        project.logger.lifecycle("Hiro：使 ${configuration.displayPath()} 使用 Skia 后端")
+        project.logger.lifecycle("Hiro Gradle 插件：使 ${configuration.displayPath()} 使用 Skia 后端")
         resolvedConfiguration.records.forEach { record -> reportResolvedDependency(configuration, record) }
         reportClasspathMismatch(configuration)
     }
@@ -52,7 +52,7 @@ internal class HiroResolutionDiagnostics(private val project: Project, private v
             record.isHiroSkia -> {
                 project.logger.lifecycle(
                     buildString {
-                        append("Hiro：${configuration.displayPath()} 已选择 ${record.selectedModule} 的 Skia 变体：${record.variantName}")
+                        append("Hiro Gradle 插件：${configuration.displayPath()} 已选择 ${record.selectedModule} 的 Skia 变体：${record.variantName}")
                         record.externalVariantName?.let { append("，外部变体：$it") }
                         record.externalVariantOwner?.let { append("，工件：$it") }
                     },
@@ -62,7 +62,7 @@ internal class HiroResolutionDiagnostics(private val project: Project, private v
             record.isAndroidOriginal -> {
                 project.logger.warn(
                     buildString {
-                        append("Hiro：${configuration.displayPath()} 仍选中 ${record.selectedModule} 的 Android 变体：${record.variantName}")
+                        append("Hiro Gradle 插件：${configuration.displayPath()} 仍选中 ${record.selectedModule} 的 Android 变体：${record.variantName}")
                         record.externalVariantName?.let { append("，外部变体：$it") }
                         record.externalVariantOwner?.let { append("，工件：$it") }
                     },
@@ -90,7 +90,7 @@ internal class HiroResolutionDiagnostics(private val project: Project, private v
             if (!reportedMismatchKeys.add(reportKey)) return@forEach
 
             val message = buildString {
-                appendLine("Hiro：${project.path}:$family 的 编译期/运行期 依赖后端不一致")
+                appendLine("Hiro Gradle 插件：${project.path}:$family 的 编译期/运行期 依赖后端不一致")
                 appendLine(" - $key")
                 appendLine("   编译期：${compileBackend.description}")
                 append("   运行期：${runtimeBackend.description}")
