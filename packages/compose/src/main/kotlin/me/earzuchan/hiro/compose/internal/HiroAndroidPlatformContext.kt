@@ -10,6 +10,7 @@ import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.platform.PlatformArchitectureComponentsOwner
 import androidx.compose.ui.platform.PlatformContext
+import androidx.compose.ui.platform.PlatformWindowInsets
 import androidx.lifecycle.*
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
@@ -20,13 +21,15 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 
 @OptIn(InternalComposeUiApi::class)
-internal class HiroAndroidPlatformContext : PlatformContext.Empty() {
+internal class HiroAndroidPlatformContext(private val hiroWindowInsets: PlatformWindowInsets) : PlatformContext.Empty() {
     private val hiroArchitectureComponentsOwner = HiroAndroidArchitectureComponentsOwner()
     private val hiroInputModeManager = HiroAndroidInputModeManager()
 
     override val architectureComponentsOwner: PlatformArchitectureComponentsOwner get() = hiroArchitectureComponentsOwner
 
     override val inputModeManager: InputModeManager get() = hiroInputModeManager
+
+    override val windowInsets: PlatformWindowInsets get() = hiroWindowInsets
 
     fun attachHostView(view: View) = hiroInputModeManager.attachHostView(view)
 

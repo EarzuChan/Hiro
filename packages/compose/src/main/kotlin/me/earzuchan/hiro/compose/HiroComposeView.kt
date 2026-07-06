@@ -13,13 +13,19 @@ import androidx.compose.ui.unit.LayoutDirection
 import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputRouter
 import me.earzuchan.hiro.compose.internal.input.HiroComposeInputSink
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
+import me.earzuchan.hiro.compose.internal.windowinsets.HiroWindowInsetsFiddlerForAndroid
+import me.earzuchan.hiro.compose.internal.windowinsets.HiroMutablePlatformWindowInsets
 import me.earzuchan.hiro.skia.HiroSkiaLayer
 import me.earzuchan.hiro.skia.HiroSkiaRenderDelegate
 
 class HiroComposeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
     private val layer = HiroSkiaLayer()
 
-    private val scene = HiroSkiaComposeScene(scheduleFrame = { layer.needRender() }, density = currentDensity(), layoutDirection = currentLayoutDirection())
+    private val windowInsets = HiroMutablePlatformWindowInsets()
+
+    private val scene = HiroSkiaComposeScene(scheduleFrame = { layer.needRender() }, density = currentDensity(), layoutDirection = currentLayoutDirection(), windowInsets = windowInsets)
+
+    private val windowInsetsReader = HiroWindowInsetsFiddlerForAndroid(windowInsets) { layer.needRender() }
 
     private val inputRouter = HiroAndroidInputRouter(object : HiroComposeInputSink {
         override fun sendPointerEvent(event: HiroComposePointerEvent): Boolean = scene.sendPointerEvent(event)
@@ -59,6 +65,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
         Log.d(TAG, "啊被贴到了一个啊窗口上了")
 
+        windowInsetsReader.attach(this)
         scene.attachHostView(this)
 
         if (layer.surfaceView == null) layer.attachTo(this)
@@ -69,6 +76,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
     override fun onDetachedFromWindow() {
         Log.d(TAG, "啊要从一个啊一个窗口上脱离了")
 
+        windowInsetsReader.detach(this)
         scene.detachHostView(this)
         close()
 
@@ -89,6 +97,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
         Log.d(TAG, "啊配置变了啊一个得让画面再哦齁齁哦哦哦")
 
+        windowInsetsReader.requestApplyInsets()
         layer.needRender()
     }
 
@@ -119,6 +128,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
         Log.d(TAG, "啊被关闭了一个（悲）")
 
+        windowInsetsReader.close()
         layer.renderDelegate = null
         layer.close()
         scene.close()

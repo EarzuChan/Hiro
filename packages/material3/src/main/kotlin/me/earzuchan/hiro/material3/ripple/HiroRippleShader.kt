@@ -12,12 +12,14 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 internal object HiroRippleShader {
-    private const val RADIUS_FACTOR = 2.3f
-    private const val NOISE_DENSITY_SCALE = 2.1f
-    private const val TURBULENCE_SCALE = 1.5f
+    private const val DOKI_DOKI_RADIUS_FACTOR = 2.3f
+    private const val KIRA_KIRA_SCALE = 2.1f
+    private const val KIRA_KIRA_WIDTH = 0.05f
+    private const val KIRA_KIRA_STRENGTH = 1f
+    private const val MAHOU_SCALE = 1.5f
     private const val PI_ROTATE_RIGHT = PI * 0.0078125
     private const val PI_ROTATE_LEFT = PI * -0.0078125
-    private val SPARKLE_COLOR = Color(0x8DFFFFFF)
+    private val KIRA_KIRA_COLOR = Color(0x8DFFFFFF)
 
     private val effect = RuntimeEffect.makeForShader(
         """
@@ -26,19 +28,21 @@ internal object HiroRippleShader {
         uniform float in_progress;
         uniform float in_maxRadius;
         uniform vec2 in_resolutionScale;
-        uniform vec2 in_noiseScale;
-        uniform float in_noisePhase;
-        uniform float in_turbulencePhase;
-        uniform vec2 in_tCircle1;
-        uniform vec2 in_tCircle2;
-        uniform vec2 in_tCircle3;
-        uniform vec2 in_tRotation1;
-        uniform vec2 in_tRotation2;
-        uniform vec2 in_tRotation3;
+        uniform vec2 in_kiraKiraScale;
+        uniform float in_kiraKiraPhase;
+        uniform float in_kiraKiraWidth;
+        uniform float in_kiraKiraStrength;
+        uniform float in_mahouPhase;
+        uniform vec2 in_mahouCircle1;
+        uniform vec2 in_mahouCircle2;
+        uniform vec2 in_mahouCircle3;
+        uniform vec2 in_mahouRotation1;
+        uniform vec2 in_mahouRotation2;
+        uniform vec2 in_mahouRotation3;
         uniform vec4 in_color;
-        uniform vec4 in_sparkleColor;
+        uniform vec4 in_kiraKiraColor;
 
-        float triangleNoise(vec2 n) {
+        float triangleKiraKira(vec2 n) {
           n  = fract(n * vec2(5.3987, 5.4421));
           n += dot(n.yx, n.xy + vec2(21.5351, 14.3137));
           float xy = n.x * n.y;
@@ -51,8 +55,8 @@ internal object HiroRippleShader {
             return step(l, v) * (1.0 - step(h, v));
         }
 
-        float sparkles(vec2 uv, float t) {
-          float n = triangleNoise(uv);
+        float kiraKira(vec2 uv, float t) {
+          float n = triangleKiraKira(uv);
           float s = 0.0;
           for (float i = 0.0; i < 4.0; i += 1.0) {
             float l = i * 0.1;
@@ -60,21 +64,20 @@ internal object HiroRippleShader {
             float o = sin(PI * (t + 0.35 * i));
             s += threshold(n + o, l, h);
           }
-          return saturate(s) * in_sparkleColor.a;
+          return saturate(s) * in_kiraKiraColor.a * in_kiraKiraStrength;
         }
 
-        float softCircle(vec2 uv, vec2 xy, float radius, float blur) {
-          float blurHalf = blur * 0.5;
+        float dokiDoki(vec2 uv, vec2 xy, float radius, float softness) {
+          float softnessHalf = softness * 0.5;
           float d = distance(uv, xy);
-          return 1.0 - smoothstep(1.0 - blurHalf, 1.0 + blurHalf, d / radius);
+          return 1.0 - smoothstep(1.0 - softnessHalf, 1.0 + softnessHalf, d / radius);
         }
 
-        float softRing(vec2 uv, vec2 xy, float radius, float progress, float blur) {
-          float thickness = 0.05 * radius;
+        float kiraKiraMask(vec2 uv, vec2 xy, float radius, float progress, float width, float softness) {
           float currentRadius = radius * progress;
-          float circle_outer = softCircle(uv, xy, currentRadius + thickness, blur);
-          float circle_inner = softCircle(uv, xy, max(currentRadius - thickness, 0.0), blur);
-          return saturate(circle_outer - circle_inner);
+          float outerDokiDoki = dokiDoki(uv, xy, currentRadius + width, softness);
+          float innerDokiDoki = dokiDoki(uv, xy, max(currentRadius - width, 0.0), softness);
+          return saturate(outerDokiDoki - innerDokiDoki);
         }
 
         float subProgress(float start, float end, float progress) {
@@ -86,20 +89,20 @@ internal object HiroRippleShader {
           return mat2(rad.x, -rad.y, rad.y, rad.x);
         }
 
-        float circle_grid(vec2 resolution, vec2 coord, float time, vec2 center, vec2 rotation, float cell_diameter) {
+        float mahouCircle(vec2 resolution, vec2 coord, float time, vec2 center, vec2 rotation, float cellDiameter) {
           coord = rotate2d(rotation) * (center - coord) + center;
-          coord = mod(coord, cell_diameter) / resolution;
-          float normal_radius = cell_diameter / resolution.y * 0.5;
-          float radius = 0.65 * normal_radius;
-          return softCircle(coord, vec2(normal_radius), radius, radius * 50.0);
+          coord = mod(coord, cellDiameter) / resolution;
+          float normalRadius = cellDiameter / resolution.y * 0.5;
+          float radius = 0.65 * normalRadius;
+          return dokiDoki(coord, vec2(normalRadius), radius, radius * 50.0);
         }
 
-        float turbulence(vec2 uv, float t) {
+        float mahou(vec2 uv, float t) {
           const vec2 scale = vec2(0.8);
           uv = uv * scale;
-          float g1 = circle_grid(scale, uv, t, in_tCircle1, in_tRotation1, 0.17);
-          float g2 = circle_grid(scale, uv, t, in_tCircle2, in_tRotation2, 0.2);
-          float g3 = circle_grid(scale, uv, t, in_tCircle3, in_tRotation3, 0.275);
+          float g1 = mahouCircle(scale, uv, t, in_mahouCircle1, in_mahouRotation1, 0.17);
+          float g2 = mahouCircle(scale, uv, t, in_mahouCircle2, in_mahouRotation2, 0.2);
+          float g3 = mahouCircle(scale, uv, t, in_mahouCircle3, in_mahouRotation3, 0.275);
           float v = (g1 * g1 + g2 - g3) * 0.5;
           return saturate(0.45 + 0.8 * v);
         }
@@ -107,48 +110,50 @@ internal object HiroRippleShader {
         vec4 main(vec2 p) {
             float fadeIn = subProgress(0.0, 0.13, in_progress);
             float scaleIn = subProgress(0.0, 1.0, in_progress);
-            float fadeOutNoise = subProgress(0.4, 0.5, in_progress);
-            float fadeOutRipple = subProgress(0.4, 1.0, in_progress);
+            float fadeOutKiraKira = subProgress(0.4, 0.5, in_progress);
+            float fadeOutDokiDoki = subProgress(0.4, 1.0, in_progress);
             vec2 center = mix(in_touch, in_origin, saturate(in_progress * 2.0));
-            float ring = softRing(p, center, in_maxRadius, scaleIn, 1.0);
-            float alpha = min(fadeIn, 1.0 - fadeOutNoise);
+            float kiraKiraArea = kiraKiraMask(p, center, in_maxRadius, scaleIn, in_maxRadius * in_kiraKiraWidth, 1.0);
+            float alpha = min(fadeIn, 1.0 - fadeOutKiraKira);
             vec2 uv = p * in_resolutionScale;
-            vec2 densityUv = uv - mod(uv, in_noiseScale);
-            float turb = turbulence(uv, in_turbulencePhase);
-            float sparkleAlpha = sparkles(densityUv, in_noisePhase) * ring * alpha * turb;
-            float fade = min(fadeIn, 1.0 - fadeOutRipple);
-            float waveAlpha = softCircle(p, center, in_maxRadius * scaleIn, 1.0) * fade * in_color.a;
-            vec4 waveColor = vec4(in_color.rgb * waveAlpha, waveAlpha);
-            vec4 sparkleColor = vec4(in_sparkleColor.rgb * in_sparkleColor.a, in_sparkleColor.a);
-            return mix(waveColor, sparkleColor, sparkleAlpha);
+            vec2 kiraKiraUv = uv - mod(uv, in_kiraKiraScale);
+            float mahouStrength = mahou(uv, in_mahouPhase);
+            float kiraKiraAlpha = kiraKira(kiraKiraUv, in_kiraKiraPhase) * kiraKiraArea * alpha * mahouStrength;
+            float fade = min(fadeIn, 1.0 - fadeOutDokiDoki);
+            float dokiDokiAlpha = dokiDoki(p, center, in_maxRadius * scaleIn, 1.0) * fade * in_color.a;
+            vec4 dokiDokiColor = vec4(in_color.rgb * dokiDokiAlpha, dokiDokiAlpha);
+            vec4 kiraKiraColor = vec4(in_kiraKiraColor.rgb * in_kiraKiraColor.a, in_kiraKiraColor.a);
+            return mix(dokiDokiColor, kiraKiraColor, kiraKiraAlpha);
         }
         """.trimIndent()
     )
 
-    fun createBrush(size: Size, touch: Offset, origin: Offset, radius: Float, progress: Float, noisePhaseMillis: Float, color: Color): ShaderBrush {
+    fun createBrush(size: Size, touch: Offset, origin: Offset, radius: Float, progress: Float, kiraKiraPhaseMillis: Float, color: Color): ShaderBrush {
         val width = size.width.coerceAtLeast(1f)
         val height = size.height.coerceAtLeast(1f)
-        val rotation1 = noisePhaseMillis * PI_ROTATE_RIGHT + 1.7 * PI
-        val rotation2 = noisePhaseMillis * PI_ROTATE_LEFT + 2.0 * PI
-        val rotation3 = noisePhaseMillis * PI_ROTATE_RIGHT + 2.75 * PI
+        val mahouRotation1 = kiraKiraPhaseMillis * PI_ROTATE_RIGHT + 1.7 * PI
+        val mahouRotation2 = kiraKiraPhaseMillis * PI_ROTATE_LEFT + 2.0 * PI
+        val mahouRotation3 = kiraKiraPhaseMillis * PI_ROTATE_RIGHT + 2.75 * PI
 
         val shader = RuntimeShaderBuilder(effect).apply {
             uniform("in_origin", origin.x, origin.y)
             uniform("in_touch", touch.x, touch.y)
             uniform("in_progress", progress)
-            uniform("in_maxRadius", radius * RADIUS_FACTOR)
+            uniform("in_maxRadius", radius * DOKI_DOKI_RADIUS_FACTOR)
             uniform("in_resolutionScale", 1f / width, 1f / height)
-            uniform("in_noiseScale", NOISE_DENSITY_SCALE / width, NOISE_DENSITY_SCALE / height)
-            uniform("in_noisePhase", noisePhaseMillis * 0.001f)
-            uniform("in_turbulencePhase", noisePhaseMillis)
-            uniform("in_tCircle1", TURBULENCE_SCALE * 0.5f + (noisePhaseMillis * 0.01f * cos(TURBULENCE_SCALE * 0.55f)), TURBULENCE_SCALE * 0.5f + (noisePhaseMillis * 0.01f * sin(TURBULENCE_SCALE * 0.55f)))
-            uniform("in_tCircle2", TURBULENCE_SCALE * 0.2f + (noisePhaseMillis * -0.0066f * cos(TURBULENCE_SCALE * 0.45f)), TURBULENCE_SCALE * 0.2f + (noisePhaseMillis * -0.0066f * sin(TURBULENCE_SCALE * 0.45f)))
-            uniform("in_tCircle3", TURBULENCE_SCALE + (noisePhaseMillis * -0.0066f * cos(TURBULENCE_SCALE * 0.35f)), TURBULENCE_SCALE + (noisePhaseMillis * -0.0066f * sin(TURBULENCE_SCALE * 0.35f)))
-            uniform("in_tRotation1", cos(rotation1).toFloat(), sin(rotation1).toFloat())
-            uniform("in_tRotation2", cos(rotation2).toFloat(), sin(rotation2).toFloat())
-            uniform("in_tRotation3", cos(rotation3).toFloat(), sin(rotation3).toFloat())
+            uniform("in_kiraKiraScale", KIRA_KIRA_SCALE / width, KIRA_KIRA_SCALE / height)
+            uniform("in_kiraKiraPhase", kiraKiraPhaseMillis * 0.001f)
+            uniform("in_kiraKiraWidth", KIRA_KIRA_WIDTH)
+            uniform("in_kiraKiraStrength", KIRA_KIRA_STRENGTH)
+            uniform("in_mahouPhase", kiraKiraPhaseMillis)
+            uniform("in_mahouCircle1", MAHOU_SCALE * 0.5f + (kiraKiraPhaseMillis * 0.01f * cos(MAHOU_SCALE * 0.55f)), MAHOU_SCALE * 0.5f + (kiraKiraPhaseMillis * 0.01f * sin(MAHOU_SCALE * 0.55f)))
+            uniform("in_mahouCircle2", MAHOU_SCALE * 0.2f + (kiraKiraPhaseMillis * -0.0066f * cos(MAHOU_SCALE * 0.45f)), MAHOU_SCALE * 0.2f + (kiraKiraPhaseMillis * -0.0066f * sin(MAHOU_SCALE * 0.45f)))
+            uniform("in_mahouCircle3", MAHOU_SCALE + (kiraKiraPhaseMillis * -0.0066f * cos(MAHOU_SCALE * 0.35f)), MAHOU_SCALE + (kiraKiraPhaseMillis * -0.0066f * sin(MAHOU_SCALE * 0.35f)))
+            uniform("in_mahouRotation1", cos(mahouRotation1).toFloat(), sin(mahouRotation1).toFloat())
+            uniform("in_mahouRotation2", cos(mahouRotation2).toFloat(), sin(mahouRotation2).toFloat())
+            uniform("in_mahouRotation3", cos(mahouRotation3).toFloat(), sin(mahouRotation3).toFloat())
             uniform("in_color", color.red, color.green, color.blue, color.alpha)
-            uniform("in_sparkleColor", SPARKLE_COLOR.red, SPARKLE_COLOR.green, SPARKLE_COLOR.blue, SPARKLE_COLOR.alpha)
+            uniform("in_kiraKiraColor", KIRA_KIRA_COLOR.red, KIRA_KIRA_COLOR.green, KIRA_KIRA_COLOR.blue, KIRA_KIRA_COLOR.alpha)
         }.makeShader().asComposeShader()
 
         return ShaderBrush(shader)

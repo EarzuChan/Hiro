@@ -11,7 +11,7 @@ plugins {
 val windowlessComposeJar = hiroProcessedJar("windowless-compose") {
     outputFileName = "hiro-compose-skia-windowless.jar"
 
-    // 版本对齐 CMP 1.11.1 大版本
+    // 版本对齐 CMP 1.11.1 大版本。坐标和版本须跟随上游 CMP 所使用的来
     artifacts(
         "androidx.compose.runtime:runtime-desktop:1.11.2",
         "androidx.compose.runtime:runtime-saveable-desktop:1.11.2",
@@ -118,7 +118,9 @@ val classicExclude = Action<ExternalModuleDependency>  {
 dependencies {
     api(project(":skia"))
 
-    // CMP related
+    implementation(libs.androidx.core)
+
+    // CMP 相关依赖。坐标和版本须跟随上游 CMP 所使用的来
     api(windowlessComposeJar.files)
     api("androidx.navigationevent:navigationevent:1.0.1", dependencyConfiguration = classicExclude)
     api("androidx.savedstate:savedstate-compose:1.4.0", dependencyConfiguration = classicExclude)
