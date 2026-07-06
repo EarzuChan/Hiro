@@ -3,7 +3,9 @@ package me.earzuchan.hiro.example.thirdparty
 import android.app.Activity
 import android.os.Bundle
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +28,9 @@ import androidx.core.view.WindowCompat.enableEdgeToEdge
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import me.earzuchan.hiro.compose.setHiroComposeContent
 
 class MambaActivity : Activity() {
@@ -36,32 +40,37 @@ class MambaActivity : Activity() {
         enableEdgeToEdge(window)
         setHiroComposeContent {
             Box(Modifier.fillMaxSize()) {
-                val backdrop = rememberLayerBackdrop()
+                val backgroundColor = Color.Black
+
+                val backdrop = rememberLayerBackdrop {
+                    drawRect(backgroundColor)
+                    drawContent()
+                }
 
                 val rowColors = listOf(Color(0xFFFF3B5A), Color(0xFFFF9F3F), Color(0xFF3BCA5A), Color(0xFF00BFCE))
-
-                val totalItems = 28
+                val totalItems = 48
                 val columnsCount = 4
 
 
-                LazyVerticalGrid(GridCells.Fixed(columnsCount), Modifier.layerBackdrop(backdrop).fillMaxSize().background(Color.White).padding(16.dp)) {
+                LazyVerticalGrid(
+                    GridCells.Fixed(columnsCount), Modifier.layerBackdrop(backdrop).fillMaxSize().background(backgroundColor),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(16.dp),
+                ) {
                     items(totalItems) { index ->
-                        // 计算当前项所属的颜色列
                         val colorIndex = index % columnsCount
                         val backgroundColor = rowColors[colorIndex]
 
-                        Box(Modifier.padding(8.dp).aspectRatio(1f).clip(RoundedCornerShape(12.dp)).background(backgroundColor), Alignment.Center) {
-                            BasicText(index.toString(), style = TextStyle(Color.White, 18.sp))
+                        Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(12.dp)).background(backgroundColor), Alignment.Center) {
+                            BasicText((index + 1).toString(), style = TextStyle(Color.White, 18.sp))
                         }
                     }
                 }
 
-                Box(Modifier
-                    .safeContentPadding()
-                    .drawBackdrop(backdrop, { CircleShape }, { lens(16.dp.toPx(), 32.dp.toPx()) })
-                    .height(64.dp)
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter))
+                Box(Modifier.safeContentPadding().padding(16.dp).drawBackdrop(backdrop, { CircleShape }, {
+                    vibrancy()
+                    blur(6.dp.toPx())
+                    lens(16.dp.toPx(), 32.dp.toPx())
+                }).height(100.dp).fillMaxWidth().align(Alignment.BottomCenter))
             }
         }
     }
