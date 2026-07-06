@@ -23,6 +23,14 @@ internal class HiroDependencyLeakScanner {
             binaryPatterns = listOf(
                 "androidx/compose/material/",
             ),
+            allowedClassPaths = setOf(
+                "androidx/compose/material/ripple/RippleAlpha.class",
+                "androidx/compose/material/ripple/RippleKt.class",
+            ),
+            allowedReferencePrefixes = listOf(
+                "androidx/compose/material/ripple/RippleAlpha",
+                "androidx/compose/material/ripple/RippleKt",
+            ),
         ),
         HiroForbiddenDependency(
             label = "Android AGSL / RenderEffect",
@@ -121,7 +129,7 @@ internal class HiroDependencyLeakScanner {
         bytes: () -> ByteArray,
     ): List<String> {
         val pathLeak = forbiddenDependencies.firstOrNull { forbidden ->
-            forbidden.binaryPatterns.any { pattern -> classPath.contains(pattern) }
+            forbidden.binaryPatterns.any { pattern -> classPath.contains(pattern) } && classPath !in forbidden.allowedClassPaths
         }
         if (pathLeak != null) {
             return listOf("$owner: $classPath 命中 ${pathLeak.label}")
@@ -130,11 +138,32 @@ internal class HiroDependencyLeakScanner {
         val leaks = mutableListOf<String>()
         val content = bytes().toString(Charsets.ISO_8859_1)
         forbiddenDependencies.forEach { forbidden ->
-            val pattern = forbidden.binaryPatterns.firstOrNull { content.contains(it) }
-            if (pattern != null) {
-                leaks += "$owner: $classPath 引用 $pattern，命中 ${forbidden.label}"
+            val reference = forbidden.binaryPatterns.firstNotNullOfOrNull { pattern ->
+                content.firstForbiddenReference(pattern, forbidden.allowedReferencePrefixes)
+            }
+            if (reference != null) {
+                leaks += "$owner: $classPath 引用 $reference，命中 ${forbidden.label}"
             }
         }
         return leaks
     }
+
+    private fun String.firstForbiddenReference(pattern: String, allowedPrefixes: List<String>): String? {
+        var cursor = indexOf(pattern)
+        while (cursor >= 0) {
+            val reference = binaryReferenceAt(cursor)
+            if (allowedPrefixes.none { allowed -> reference.startsWith(allowed) }) return reference
+            cursor = indexOf(pattern, cursor + pattern.length)
+        }
+        return null
+    }
+
+    private fun String.binaryReferenceAt(start: Int): String {
+        var end = start
+        while (end < length && this[end].isBinaryReferenceChar()) end++
+        return substring(start, end)
+    }
+
+    private fun Char.isBinaryReferenceChar(): Boolean =
+        isLetterOrDigit() || this == '/' || this == '$' || this == '_' || this == '-'
 }

@@ -135,7 +135,7 @@ private class HiroSkiaSurfaceRenderer(private val layer: HiroSkiaLayer, private 
     fun update(frameTimeNanos: Long) {
         if (released || width <= 0 || height <= 0) return
 
-        // TODO：后续接 ComposeScene 后，需要评估是否可以减少 PictureRecorder 的每帧分配
+        // TODO：后续接 ComposeScene 后，需要评估是否可以减少 PictureRecorder 的每帧分配 / 从 Picture 切为更直接的 GPU 渲染链
         val delegate = layer.renderDelegate ?: return
         val recorder = PictureRecorder()
         val bounds = Rect.makeWH(width.toFloat(), height.toFloat())
@@ -179,8 +179,7 @@ private class HiroSkiaSurfaceRenderer(private val layer: HiroSkiaLayer, private 
 
         gl ?: return
 
-        gl.glClearColor(0f, 0f, 0f, 0f)
-        gl.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT or GL10.GL_STENCIL_BUFFER_BIT)
+        // TIPS：不CLEAR GL，因为 Compose 要复用绘制内容
 
         val holder = synchronized(pictureLock) { picture }
         val targetCanvas = canvas
