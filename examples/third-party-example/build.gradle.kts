@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-val appNamespace = "${HiroBuildConfig.namespace}.examples.thirdparty"
+val appNamespace = "${HiroBuildConfig.namespace}.example.thirdparty"
 
 android {
     namespace = appNamespace
@@ -32,4 +32,5 @@ dependencies {
     implementation(libs.androidx.core)
 
     // 3rd deps
+    implementation("io.github.kyant0:backdrop:2.0.0")
 }

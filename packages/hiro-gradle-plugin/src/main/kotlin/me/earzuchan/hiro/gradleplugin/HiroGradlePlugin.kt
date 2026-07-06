@@ -1,5 +1,6 @@
 package me.earzuchan.hiro.gradleplugin
 
+import me.earzuchan.hiro.gradleplugin.diagnostic.HiroResolutionDiagnostics
 import me.earzuchan.hiro.gradleplugin.task.HiroStrictDependencyCheckTask
 import org.gradle.api.Action
 import org.gradle.api.Plugin
@@ -10,6 +11,7 @@ import org.gradle.api.attributes.Attribute
 class HiroGradlePlugin : Plugin<Project> {
     override fun apply(project: Project) {
         val extension = project.extensions.create("hiro", HiroExtension::class.java)
+        val resolutionDiagnostics = HiroResolutionDiagnostics(project) { extension.strict }
 
         project.pluginManager.withPlugin("com.android.application", Action { HiroAndroidPackaging.configure(project) })
 
@@ -25,22 +27,19 @@ class HiroGradlePlugin : Plugin<Project> {
             if (configuration.isAndroidMainClasspath()) {
                 configuration.attributes.attribute(HiroAttributes.skiaBackend, HiroAttributes.required)
                 configuration.exclude(mapOf("group" to "org.jetbrains.runtime", "module" to "jbr-api"))
+                resolutionDiagnostics.attach(configuration)
             }
         })
 
-        val strictCheck = project.tasks.register(
-            "hiroCheckStrictDependencies", HiroStrictDependencyCheckTask::class.java, Action { task ->
-                task.group = "hiro"
-                task.description = "检查 Android 依赖图没有泄漏 Android Compose 后端、AGSL 或桌面窗口系统。"
-            }
-        )
+        val strictCheck = project.tasks.register("hiroCheckStrictDependencies", HiroStrictDependencyCheckTask::class.java, Action { task ->
+            task.group = "hiro"
+            task.description = "检查 Android 依赖图没有泄漏 Android Compose 后端、AGSL 或桌面窗口系统。"
+        })
 
         project.afterEvaluate {
             strictCheck.configure(Action { task ->
                 task.strict = extension.strict
-                project.configurations
-                    .filter { it.isAndroidMainClasspath() }
-                    .forEach { configuration -> task.artifactFiles.from(configuration.incoming.artifactView(Action { viewConfiguration -> viewConfiguration.attributes.attribute(Attribute.of("artifactType", String::class.java), "jar") }).files) }
+                project.configurations.filter { it.isAndroidMainClasspath() }.forEach { configuration -> task.artifactFiles.from(configuration.incoming.artifactView(Action { viewConfiguration -> viewConfiguration.attributes.attribute(Attribute.of("artifactType", String::class.java), "jar") }).files) }
             })
         }
 

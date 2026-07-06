@@ -9,4 +9,5 @@ internal object HiroAttributes {
 
     const val required = "required"
     const val blockedCompose = "blocked-compose"
+    const val blockedAndroid = "blocked-android"
 }
