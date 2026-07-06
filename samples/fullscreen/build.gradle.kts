@@ -4,6 +4,7 @@ plugins {
     id("me.earzuchan.hiro.internal.build-logic")
     id("me.earzuchan.hiro")
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
 }
 
 val appNamespace = "${HiroBuildConfig.namespace}.samples.fullscreen"
@@ -26,4 +27,4 @@ android {
     }
 }
 
-dependencies { implementation(project(":skiko")) }
+dependencies { implementation(project(":compose")) }

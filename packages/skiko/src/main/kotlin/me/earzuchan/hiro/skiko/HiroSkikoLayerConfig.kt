@@ -14,17 +14,9 @@ data class HiroSkikoLayerConfig(
     val preserveEglContextOnPause: Boolean = true,
 ) {
     init {
-        require(eglContextClientVersion >= 2) {
-            "EGL 版本至少需要 2"
-        }
-        require(redBits >= 0 && greenBits >= 0 && blueBits >= 0 && alphaBits >= 0) {
-            "颜色位数不能为负数"
-        }
-        require(depthBits >= 0 && stencilBits >= 0 && stencilBufferBits >= 0) {
-            "深度和模板位数不能为负数"
-        }
-        require(sampleCount >= 0) {
-            "采样数量不能为负数"
-        }
+        require(eglContextClientVersion >= 2) { "EGL 版本至少需要 2" }
+        require(redBits >= 0 && greenBits >= 0 && blueBits >= 0 && alphaBits >= 0) { "颜色位数不能为负数" }
+        require(depthBits >= 0 && stencilBits >= 0 && stencilBufferBits >= 0) { "深度和模板位数不能为负数" }
+        require(sampleCount >= 0) { "采样数量不能为负数" }
     }
 }

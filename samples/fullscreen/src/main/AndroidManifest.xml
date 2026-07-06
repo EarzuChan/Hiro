@@ -4,9 +4,9 @@
         android:required="true" />
 
     <application
-        android:label="Hiro P0.1">
+        android:label="Hiro P0.3">
         <activity
-            android:name=".P0SkiaActivity"
+            android:name=".P0ComposeSceneActivity"
             android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>

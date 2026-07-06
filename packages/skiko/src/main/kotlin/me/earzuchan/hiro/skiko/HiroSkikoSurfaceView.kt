@@ -4,34 +4,31 @@ import android.content.Context
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Looper
+import android.util.Log
+import android.view.Choreographer
 import android.view.ViewGroup
-import org.jetbrains.skia.BackendRenderTarget
-import org.jetbrains.skia.Canvas
-import org.jetbrains.skia.ColorSpace
-import org.jetbrains.skia.DirectContext
-import org.jetbrains.skia.FramebufferFormat
-import org.jetbrains.skia.Picture
-import org.jetbrains.skia.PictureRecorder
-import org.jetbrains.skia.Rect
-import org.jetbrains.skia.Surface
-import org.jetbrains.skia.SurfaceColorFormat
-import org.jetbrains.skia.SurfaceOrigin
+import org.jetbrains.skia.*
 import java.nio.IntBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-class HiroSkikoSurfaceView internal constructor(
-    context: Context,
-    private val layer: HiroSkiaLayer,
-    private val config: HiroSkikoLayerConfig,
-) : GLSurfaceView(context) {
+class HiroSkikoSurfaceView internal constructor(context: Context, layer: HiroSkiaLayer, config: HiroSkikoLayerConfig) : GLSurfaceView(context) {
     private val renderer = HiroSkikoSurfaceRenderer(layer, config, ::requestNextFrame)
+    private val choreographer: Choreographer by lazy(LazyThreadSafetyMode.NONE) { Choreographer.getInstance() }
+    private val frameCallback = Choreographer.FrameCallback(::doFrame)
+
+    private var frameScheduled: Boolean = false
+    private var frameRunning: Boolean = false
+    private var frameRequestedDuringFrame: Boolean = false
+    private var released: Boolean = false
+
+    companion object{
+        private const val TAG = "HiroSkikoSurfaceView"
+    }
 
     init {
-        layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-        )
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+
         preserveEGLContextOnPause = config.preserveEglContextOnPause
         setEGLConfigChooser(HiroEglConfigChooser(config))
         setEGLContextClientVersion(config.eglContextClientVersion)
@@ -39,38 +36,75 @@ class HiroSkikoSurfaceView internal constructor(
         renderMode = RENDERMODE_WHEN_DIRTY
         isFocusable = true
         isFocusableInTouchMode = true
+
+        Log.d(TAG, "啊被创建啊一个")
     }
 
     fun scheduleFrame() {
-        // TODO：接入 Compose 高频 invalidate 后，需要合并同一主线程循环里的重复帧请求
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            renderFrameOnMainThread()
-        } else {
-            post(::renderFrameOnMainThread)
-        }
+        if (Looper.myLooper() == Looper.getMainLooper()) scheduleFrameOnMainThread() else post(::scheduleFrameOnMainThread)
+        // TIPS：不在这打LOG，太高频被调用
     }
 
     internal fun releaseRenderer() {
+        Log.d(TAG, "啊释放啊一个渲染器")
+
+        if (Looper.myLooper() == Looper.getMainLooper()) cancelFramePumpOnMainThread() else post(::cancelFramePumpOnMainThread)
+
         queueEvent { renderer.release() }
     }
 
-    private fun renderFrameOnMainThread() {
+    private fun scheduleFrameOnMainThread() {
+        // TIPS：同上，不打LOG
+
+        if (released) return
+
+        if (frameRunning) {
+            frameRequestedDuringFrame = true
+            return
+        }
+
+        if (frameScheduled) return
+
+        frameScheduled = true
+        choreographer.postFrameCallback(frameCallback)
+    }
+
+    private fun cancelFramePumpOnMainThread() {
+        released = true
+
+        if (frameScheduled) choreographer.removeFrameCallback(frameCallback)
+
+        frameScheduled = false
+        frameRequestedDuringFrame = false
+    }
+
+    private fun doFrame(frameTimeNanos: Long) {
+        if (released) return
+
+        frameScheduled = false
+        frameRunning = true
+        frameRequestedDuringFrame = false
+
+        try {
+            renderFrameOnMainThread(frameTimeNanos)
+        } finally {
+            frameRunning = false
+        }
+
+        if (frameRequestedDuringFrame) scheduleFrameOnMainThread()
+    }
+
+    private fun renderFrameOnMainThread(frameTimeNanos: Long) {
         // TODO：后续需要区分只需要重绘和需要重新录制 Picture 的场景
-        renderer.update()
+
+        renderer.update(frameTimeNanos)
         requestRender()
     }
 
-    private fun requestNextFrame() {
-        // TODO：后续需要接入更严格的 vsync 节流和背压策略，避免动画连续请求时过度录制
-        post(::scheduleFrame)
-    }
+    private fun requestNextFrame() = scheduleFrame()
 }
 
-private class HiroSkikoSurfaceRenderer(
-    private val layer: HiroSkiaLayer,
-    private val config: HiroSkikoLayerConfig,
-    private val requestNextFrame: () -> Unit,
-) : GLSurfaceView.Renderer {
+private class HiroSkikoSurfaceRenderer(private val layer: HiroSkiaLayer, private val config: HiroSkikoLayerConfig, private val requestNextFrame: () -> Unit) : GLSurfaceView.Renderer {
     private val pictureLock = Any()
 
     @Volatile
@@ -88,7 +122,15 @@ private class HiroSkikoSurfaceRenderer(
     @Volatile
     private var released: Boolean = false
 
-    fun update() {
+    companion object{
+        private const val TAG = "HiroSkikoSurfaceRenderer"
+    }
+
+    init {
+        Log.d(TAG, "啊被创建啊一个")
+    }
+
+    fun update(frameTimeNanos: Long) {
         if (released || width <= 0 || height <= 0) return
 
         // TODO：后续接 ComposeScene 后，需要评估是否可以减少 PictureRecorder 的每帧分配
@@ -98,14 +140,16 @@ private class HiroSkikoSurfaceRenderer(
         val recordingCanvas = recorder.beginRecording(bounds)
 
         try {
-            delegate.onRender(recordingCanvas, width, height, System.nanoTime())
+            delegate.onRender(recordingCanvas, width, height, frameTimeNanos)
         } finally {
             val newPicture = recorder.finishRecordingAsPicture()
+
             val oldPicture = synchronized(pictureLock) {
                 val old = picture
                 picture = HiroPictureHolder(newPicture, width, height)
                 old
             }
+
             oldPicture?.picture?.close()
         }
     }
@@ -114,6 +158,8 @@ private class HiroSkikoSurfaceRenderer(
         gl ?: return
         gl.glClearColor(0f, 0f, 0f, 0f)
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT)
+
+        Log.d(TAG, "啊一个啊表面被创建")
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -122,10 +168,15 @@ private class HiroSkikoSurfaceRenderer(
         this.height = height
         initCanvas(gl)
         requestNextFrame()
+
+        Log.d(TAG, "啊一个啊表面被改变啊")
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        // TIPS：这个不打LOG
+
         gl ?: return
+
         gl.glClearColor(0f, 0f, 0f, 0f)
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT or GL10.GL_STENCIL_BUFFER_BIT)
 
@@ -135,10 +186,13 @@ private class HiroSkikoSurfaceRenderer(
             targetCanvas.clear(config.clearColor)
             targetCanvas.drawPicture(holder.picture)
         }
+
         directContext?.flush()
     }
 
     fun release() {
+        Log.d(TAG, "啊一个啊被释放")
+
         released = true
         val oldPicture = synchronized(pictureLock) {
             val old = picture
@@ -150,13 +204,13 @@ private class HiroSkikoSurfaceRenderer(
     }
 
     private fun initCanvas(gl: GL10) {
+        Log.d(TAG, "啊想初始化啊一个画布")
+
         disposeCanvas()
 
         val framebufferId = queryGlInteger(gl, GLES20.GL_FRAMEBUFFER_BINDING)
         val actualSampleCount = queryGlInteger(gl, GLES20.GL_SAMPLES).coerceAtLeast(config.sampleCount)
-        val actualStencilBits = queryGlInteger(gl, GLES20.GL_STENCIL_BITS).let {
-            if (it > 0) it else config.stencilBufferBits
-        }
+        val actualStencilBits = queryGlInteger(gl, GLES20.GL_STENCIL_BITS).let { if (it > 0) it else config.stencilBufferBits }
 
         renderTarget = BackendRenderTarget.makeGL(
             width,
@@ -185,16 +239,11 @@ private class HiroSkikoSurfaceRenderer(
         surface = null
         renderTarget = null
         directContext = null
+
+        Log.d(TAG, "啊一个啊画布被处理")
     }
 
-    private fun queryGlInteger(gl: GL10, name: Int): Int =
-        IntBuffer.allocate(1).also {
-            gl.glGetIntegerv(name, it)
-        }[0]
+    private fun queryGlInteger(gl: GL10, name: Int) = IntBuffer.allocate(1).also { gl.glGetIntegerv(name, it) }[0]
 }
 
-private data class HiroPictureHolder(
-    val picture: Picture,
-    val width: Int,
-    val height: Int,
-)
+private data class HiroPictureHolder(val picture: Picture, val width: Int, val height: Int)
