@@ -2,7 +2,6 @@ import me.earzuchan.hiro.buildlogic.HiroBuildConfig
 
 plugins {
     id("me.earzuchan.hiro.internal.build-logic")
-    id("me.earzuchan.hiro")
     alias(libs.plugins.android.library)
     `maven-publish`
 }

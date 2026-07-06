@@ -1,6 +1,5 @@
 @file:JvmName("DesktopPlatformLocale_desktopKt")
 @file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
-// ↑：这得给我面子啊，必须好使
 
 package androidx.compose.ui.text.intl
 
