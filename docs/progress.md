@@ -46,4 +46,11 @@
    - 插件会为 Android 工程排除 KMP 元数据资源进入 APK，避免`.knm`和 source set manifest 被当作 Java resource 合包；这不排除 class，也不掩盖 strict 泄漏
    - strict 默认开启，扫描最终 Android main classpath 产物里的 jar、aar 内 classes/libs 以及目录 class，发现 Android Compose 后端、Android AGSL/RenderEffect、Legacy Material、AWT/Swing/JavaFX/Skiko AWT 等既定路径即失败
    - 已执行并通过：`:build-logic:compileKotlin :hiro-gradle-plugin:compileKotlin`、`:compose:build :material3:build :hiro:build`、`:compose:hiroCheckStrictDependencies :material3:hiroCheckStrictDependencies :hiro:hiroCheckStrictDependencies :samples:fullscreen:hiroCheckStrictDependencies :samples:material3-sample:hiroCheckStrictDependencies :samples:third-party-libs:hiroCheckStrictDependencies`、`hiroBuildAll`、`hiroPublishLocal`
-   - P0.3 的 Android-Skiko Compose 原型和 P0.4 的`HiroComposeView`仍未开始
+   - P0.3 已进入后续条目；P0.4 的`HiroComposeView`仍未开始
+8. 已按 CMP`1.11.1`现实口径完成 P0.3 首个`:compose`原型：
+   - `:compose`新增窗口无关 Compose Skiko 产物构建任务，从 CMP`1.11.1`的桌面承载 artifact 中抽出`ui / foundation / animation`的 common/skiko 类，并过滤 Android Compose 后端、AGSL、AWT/Swing/JavaFX、Skiko AWT 等泄漏路径
+   - `:compose`的 AAR 已把`hiro-compose-skiko-windowless.jar`打进`libs/`，其中包含`CanvasLayersComposeScene`、`ComposeSceneRecomposer`、`SkiaBackedCanvas`
+   - 新增`HiroSkikoComposeScene`，把 `HiroSkiaLayer` 给出的 Skia canvas 转为 Compose canvas，并驱动 `CanvasLayersComposeScene.render`
+   - `:samples:fullscreen`新增 P0.3 全屏 Compose Skiko 示例 Activity，使用 `Box / Canvas / BasicText / infinite transition` 验证布局、绘制、文本和动画链路
+   - 已执行并通过：`:compose:hiroCheckComposeSkikoPrototype`、`:compose:compileDebugKotlin`、`:samples:fullscreen:compileDebugKotlin`、`:samples:fullscreen:assembleDebug`、`:compose:hiroCheckStrictDependencies`、`:samples:fullscreen:hiroCheckStrictDependencies`、`:compose:build :samples:fullscreen:assembleDebug`
+   - 口径已修正：CMP`1.11.1`已发布 artifact 中没有`FrameRecomposer`和`SingleComposeSceneRenderingScope`类，因此 P0.3 按`ComposeSceneRecomposer + ComposeScene.render`作为真实帧调度闭环；等后续 CMP stable 正式发布新 API 再评估切换
