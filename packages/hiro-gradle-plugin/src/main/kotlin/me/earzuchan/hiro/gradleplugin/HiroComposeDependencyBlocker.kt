@@ -6,8 +6,15 @@ import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.DependencySet
 import org.gradle.api.artifacts.DirectDependenciesMetadata
 import org.gradle.api.artifacts.ExternalModuleDependency
+import org.gradle.api.artifacts.ModuleVersionIdentifier
+import org.gradle.api.logging.Logging
+import java.util.Collections
 
 internal object HiroComposeDependencyBlocker {
+    private val logger = Logging.getLogger(HiroComposeDependencyBlocker::class.java)
+    private val loggedBlockedModules = Collections.synchronizedSet(linkedSetOf<String>())
+    private val loggedRemovedDependencies = Collections.synchronizedSet(linkedSetOf<String>())
+
     fun rejectDirectComposeDependencies(configuration: Configuration) {
         configuration.withDependencies(object : Action<DependencySet> {
             override fun execute(dependencies: DependencySet) {
@@ -18,6 +25,8 @@ internal object HiroComposeDependencyBlocker {
                     }
 
                 if (composeDependencies.isEmpty()) return
+
+                logger.error("Hiro：用户在 ${configuration.name} 直接声明了官方 Compose 坐标，构建终止")
 
                 throw GradleException(
                     buildString {
@@ -32,13 +41,24 @@ internal object HiroComposeDependencyBlocker {
         })
     }
 
-    fun removeComposeDependencies(dependencies: DirectDependenciesMetadata) {
+    fun removeComposeDependencies(dependencies: DirectDependenciesMetadata, owner: String) {
         val iterator = dependencies.iterator()
         while (iterator.hasNext()) {
             val dependency = iterator.next()
             if (HiroDependencyPolicy.isComposeLibrary(dependency.group)) {
+                val removed = "$owner -> ${dependency.group}:${dependency.name}:${dependency.versionConstraint.displayName}"
+                if (loggedRemovedDependencies.add(removed)) {
+                    logger.lifecycle("Hiro：从 $owner 移除官方 Compose 传递依赖 ${dependency.group}:${dependency.name}:${dependency.versionConstraint.displayName}")
+                }
                 iterator.remove()
             }
+        }
+    }
+
+    fun logBlockedComposeModule(id: ModuleVersionIdentifier) {
+        val module = "${id.group}:${id.name}:${id.version}"
+        if (loggedBlockedModules.add(module)) {
+            logger.lifecycle("Hiro：阻断官方 Compose 模块 $module 进入 Hiro Android classpath")
         }
     }
 }

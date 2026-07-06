@@ -17,22 +17,29 @@ abstract class HiroStrictDependencyCheckTask : DefaultTask() {
 
     @TaskAction
     fun checkDependencies() {
-        if (!strict) return
+        if (!strict) {
+            logger.lifecycle("Hiro 严格模式：已关闭，跳过依赖泄漏扫描")
+
+            return
+        }
 
         val leaks = linkedSetOf<String>()
         val scanner = HiroDependencyLeakScanner()
+        val artifacts = artifactFiles.files
 
-        artifactFiles.files.forEach { artifact ->
-            leaks += scanner.scanArtifact(artifact, artifact.name)
-        }
+        logger.lifecycle("Hiro 严格模式：开始扫描 ${artifacts.size} 个工件")
+
+        artifacts.forEach { artifact -> leaks += scanner.scanArtifact(artifact, artifact.name) }
 
         if (leaks.isNotEmpty()) {
-            throw GradleException(
-                buildString {
-                    appendLine("Hiro strict 检查失败：Android 依赖图仍有不可接受路径")
-                    leaks.forEach { appendLine(" - $it") }
-                },
-            )
+            logger.warn("Hiro 严格模式：发现 ${leaks.size} 个不可接受路径")
+
+            throw GradleException(buildString {
+                appendLine("Hiro 严格模式 检查失败：Android 依赖图仍有不可接受路径")
+                leaks.forEach { appendLine(" - $it") }
+            })
         }
+
+        logger.lifecycle("Hiro 严格模式：扫描通过，未发现 Android Compose / AGSL / 桌面窗口系统泄漏")
     }
 }
