@@ -1,3 +1,5 @@
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+
 package me.earzuchan.hiro.compose.internal.input
 
 import android.util.SparseLongArray
@@ -111,7 +113,10 @@ internal class HiroAndroidPointerEventAdapter {
     // TODO：后续补充触控笔倾斜、侧键和安卓高阶轴数据
     private fun historicalChanges(event: MotionEvent, index: Int) = if (event.historySize == 0) emptyList()
     else List(event.historySize) { historyIndex ->
-        HistoricalChange(event.getHistoricalEventTime(historyIndex), Offset(event.getHistoricalX(index, historyIndex), event.getHistoricalY(index, historyIndex)))
+        val position = Offset(event.getHistoricalX(index, historyIndex), event.getHistoricalY(index, historyIndex))
+
+        // TIPS：Compose VelocityTrackerAddPointsFix 路径读取的是 originalEventPosition。只用公开构造器会让它保持 Offset.Zero，快速滑动时速度追踪会被历史点污染。雷霆帅修！
+        HistoricalChange(event.getHistoricalEventTime(historyIndex), position, 1f, Offset.Zero, position)
     }
 
     private fun pointerButtons(event: MotionEvent): PointerButtons {
