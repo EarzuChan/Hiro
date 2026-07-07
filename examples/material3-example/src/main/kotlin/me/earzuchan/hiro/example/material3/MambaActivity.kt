@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,12 +38,17 @@ class MambaActivity : Activity() {
         enableEdgeToEdge(window)
         setHiroComposeContent {
             var useDark by remember { mutableStateOf(true) }
+            val scrollState = rememberScrollState()
 
             MaterialTheme(if (useDark) darkColorScheme() else lightColorScheme()) {
-                Column(Modifier.background(MaterialTheme.colorScheme.background).safeContentPadding().fillMaxSize(), Arrangement.spacedBy(40.dp), Alignment.CenterHorizontally) {
-                    Box(Modifier.width(400.dp).weight(1f).clickable { })
+                Column(Modifier.verticalScroll(scrollState).background(MaterialTheme.colorScheme.background).safeContentPadding().fillMaxSize(), Arrangement.spacedBy(40.dp), Alignment.CenterHorizontally) {
+                    Text("下面有个 400DP 的水波纹区域给你玩", color = MaterialTheme.colorScheme.onBackground)
+
+                    Box(Modifier.size(400.dp).clickable { })
 
                     Button({ useDark = !useDark }) { Text("切换颜色模式") }
+
+                    for (i in 1..20) Text("测试，为了能滚动。这是第${i}行", color = MaterialTheme.colorScheme.onBackground)
                 }
             }
         }
