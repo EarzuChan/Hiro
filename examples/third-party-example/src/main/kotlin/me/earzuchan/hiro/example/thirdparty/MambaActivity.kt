@@ -6,11 +6,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -40,7 +44,7 @@ class MambaActivity : Activity() {
         enableEdgeToEdge(window)
         setHiroComposeContent {
             Box(Modifier.fillMaxSize()) {
-                val backgroundColor = Color.Black
+                val backgroundColor = Color.White
 
                 val backdrop = rememberLayerBackdrop {
                     drawRect(backgroundColor)
@@ -54,7 +58,7 @@ class MambaActivity : Activity() {
 
                 LazyVerticalGrid(
                     GridCells.Fixed(columnsCount), Modifier.layerBackdrop(backdrop).fillMaxSize().background(backgroundColor),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = WindowInsets.safeContent.asPaddingValues() + PaddingValues(16.dp),
                 ) {
                     items(totalItems) { index ->
                         val colorIndex = index % columnsCount
@@ -66,11 +70,11 @@ class MambaActivity : Activity() {
                     }
                 }
 
-                Box(Modifier.safeContentPadding().padding(16.dp).drawBackdrop(backdrop, { CircleShape }, {
+                Box(Modifier.safeContentPadding().padding(32.dp).drawBackdrop(backdrop, { CircleShape }, {
                     vibrancy()
                     blur(6.dp.toPx())
                     lens(16.dp.toPx(), 32.dp.toPx())
-                }).height(100.dp).fillMaxWidth().align(Alignment.BottomCenter))
+                }, onDrawSurface = { drawRect(Color.White.copy(0.5f)) }).height(80.dp).fillMaxWidth().align(Alignment.BottomCenter))
             }
         }
     }
