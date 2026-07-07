@@ -1,7 +1,8 @@
 # Hiro
 
+![Version](https://img.shields.io/badge/Version-1.0.1--alpha--cmp1.11.1-red?style=flat-square)
 [![Maven](https://img.shields.io/badge/Maven-EarzuChan-blue?style=flat-square)](https://earzuchan.github.io/maven/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](https://opensource.org/license/MIT)
+[![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/license/MIT)
 
 将 Compose Multiplatform 的 Skia（Skiko）版使用在 Android 上。
 
