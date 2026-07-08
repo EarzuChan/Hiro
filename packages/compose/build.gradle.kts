@@ -10,7 +10,7 @@ plugins {
 }
 
 val windowlessComposeJar = hiroProcessedJar("windowless-compose") {
-    outputFileName = "hiro-compose-skia-windowless.jar"
+    outputFileName = "hiro-processed-compose.jar"
 
     // 版本对齐 CMP 1.11.1 大版本。坐标和版本须跟随上游 CMP 所使用的来
     artifacts(
@@ -127,6 +127,7 @@ dependencies {
 
     // CMP 相关依赖。坐标和版本须跟随上游 CMP 所使用的来
     api(windowlessComposeJar.files)
+    // 下面这些，不需要处理，一般不会导致冲突，Gradle一般能智能合并
     api("androidx.navigationevent:navigationevent:1.0.1", dependencyConfiguration = classicExclude)
     api("androidx.savedstate:savedstate-compose:1.4.0", dependencyConfiguration = classicExclude)
     api("androidx.lifecycle:lifecycle-runtime-compose:2.9.4", dependencyConfiguration = classicExclude)
