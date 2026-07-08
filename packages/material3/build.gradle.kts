@@ -9,7 +9,7 @@ plugins {
 }
 
 val windowlessMaterial3Jar = hiroProcessedJar("windowless-material3") {
-    outputFileName = "hiro-material3-windowless.jar"
+    outputFileName = "hiro-processed-material3.jar"
 
     artifact("org.jetbrains.compose.material3:material3-desktop:1.11.0-alpha07")
 
