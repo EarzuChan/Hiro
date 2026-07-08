@@ -27,7 +27,7 @@ gradlePlugin {
             id = HiroBuildConfig.namespace // 这里为了用户引入，仍用主NS
             implementationClass = "$gradlePluginNamespace.HiroGradlePlugin"
             displayName = "Hiro Compose Skia Android"
-            description = "配置 Hiro Compose Skia Android 的依赖替换和兼容性检查"
+            description = "配置 Hiro Compose Skia Android 的依赖剥离和兼容性检查"
         }
     }
 }
