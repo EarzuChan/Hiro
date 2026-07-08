@@ -1,10 +1,13 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("me.earzuchan.hiro.internal.build-logic")
     alias(libs.plugins.android.library)
     `maven-publish`
 }
+
+// TIPS：本机库打包的是我们地地道道的修复版
 
 android {
     namespace = "${HiroBuildConfig.namespace}.skia"
@@ -23,9 +26,9 @@ android {
     publishing { singleVariant("release") { withSourcesJar() } }
 }
 
-dependencies {
-    api("org.jetbrains.skiko:skiko-android:0.144.6")
-}
+tasks.withType<KotlinCompile>().configureEach { compilerOptions.moduleName.set("hiro-skia") }
+
+dependencies { api("org.jetbrains.skiko:skiko-android:0.144.6") }
 
 publishing {
     publications {

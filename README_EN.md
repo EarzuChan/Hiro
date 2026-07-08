@@ -1,6 +1,6 @@
 # Hiro
 
-![Version](https://img.shields.io/badge/Version-1.0.1--alpha--cmp1.11.1-red?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.0.2--alpha--cmp1.11.1-red?style=flat-square)
 [![Maven](https://img.shields.io/badge/Maven-EarzuChan-blue?style=flat-square)](https://earzuchan.github.io/maven/)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/license/MIT)
 
@@ -33,13 +33,18 @@ Run the Skia (Skiko) version of Compose Multiplatform on Android.
 ## Get Started
 
 1. Create a standard Android project.
-2. Configure the Maven repository in your project's root `settings.gradle.kts` file: Add my Maven repository URL inside the `repositories` blocks of both `pluginManagement` and `dependencyResolutionManagement`:
+2. Configure Maven Repositories: Add the following configuration to the **`settings.gradle.kts`** file in your project's root directory:
+   Add my repository to the `repositories` block in both `pluginManagement` and `dependencyResolutionManagement`:
    ```kotlin
-   maven("https://earzuchan.github.io/Maven/") // Note: Ensure the "M" in "Maven" is capitalized.
+   maven("https://earzuchan.github.io/Maven/") // Note: Make sure the letter "M" in "Maven" is capitalized
+   ```
+   Add the JetBrains Compose Dev repository to the `repositories` block in `dependencyResolutionManagement`:
+   ```kotlin
+   maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
    ```
 3. Apply the Gradle plugin: In your root `build.gradle.kts` file's `plugins` block, add:
    ```kotlin
-   id("me.earzuchan.hiro") apply false
+   id("me.earzuchan.hiro") version "<VERSION>" apply false
    ```
    In your Android application module's `build.gradle.kts` file's `plugins` block, add:
    ```kotlin

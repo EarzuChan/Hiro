@@ -1,5 +1,6 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
 import me.earzuchan.hiro.buildlogic.hiroProcessedJar
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("me.earzuchan.hiro.internal.build-logic")
@@ -110,6 +111,8 @@ android {
 
     publishing { singleVariant("release") { withSourcesJar() } }
 }
+
+tasks.withType<KotlinCompile>().configureEach { compilerOptions.moduleName.set("hiro-compose") }
 
 val classicExclude = Action<ExternalModuleDependency>  {
     exclude(group = "androidx.compose.runtime")

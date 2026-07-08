@@ -1,5 +1,6 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
 import me.earzuchan.hiro.buildlogic.hiroProcessedJar
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("me.earzuchan.hiro.internal.build-logic")
@@ -37,6 +38,8 @@ android {
 
     publishing { singleVariant("release") { withSourcesJar() } }
 }
+
+tasks.withType<KotlinCompile>().configureEach { compilerOptions.moduleName.set("hiro-material3") }
 
 dependencies {
     api(project(":compose"))
