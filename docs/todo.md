@@ -10,3 +10,5 @@
 - IME与TextField正常性
 - HGP优化：基本OK
 - 性能优化，直通Skia：有意外闪退（小米15Ultra）
+- 不兼容：用户无法使用AndroidxActivity，我们HGP会阻断其内在AndroidxAnnotation的引入（我们有Annotation，但版本不同），Gradle会报解析依赖失败
+- 不兼容：观察到部分库引入“非1.11.1”的Compose相关依赖，Gradle会报解析这些依赖失败

@@ -1,6 +1,6 @@
 # Hiro
 
-![Version](https://img.shields.io/badge/Version-1.0.1--alpha--cmp1.11.1-red?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.0.2--alpha--cmp1.11.1-red?style=flat-square)
 [![Maven](https://img.shields.io/badge/Maven-EarzuChan-blue?style=flat-square)](https://earzuchan.github.io/maven/)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/license/MIT)
 
@@ -33,13 +33,18 @@
 ## 用起来（Get Started）
 
 1. 创建一个标准的 Android 项目。
-2. 在项目根目录的 `settings.gradle.kts` 文件中配置我的 Maven 仓库：在 `pluginManagement` 和 `dependencyResolutionManagement` 的 `repositories` 块中添加以下地址：
+2. 配置 Maven 仓库：在项目根目录的 **`settings.gradle.kts`** 文件中进行以下配置：
+   在 `pluginManagement` 和 `dependencyResolutionManagement` 的 `repositories` 块中均添加我的仓库：
    ```kotlin
-   maven("https://earzuchan.github.io/Maven/") // 注意：请确保 "Maven" 中的字母 "M" 为大写。
+   maven("https://earzuchan.github.io/Maven/") // 注意：请确保“Maven”中的字母“M”为大写
+   ```
+   在 `dependencyResolutionManagement` 的 `repositories` 块中再添加 JetBrains Compose Dev 的仓库：
+   ```kotlin
+   maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
    ```
 3. 应用 Gradle 插件：在根目录 `build.gradle.kts` 文件的 `plugins` 块中添加：
    ```kotlin
-   id("me.earzuchan.hiro") apply false
+   id("me.earzuchan.hiro") version "<VERSION>" apply false
    ```
    在您的 Android 模块的 `build.gradle.kts` 文件的 `plugins` 块中添加：
    ```kotlin
