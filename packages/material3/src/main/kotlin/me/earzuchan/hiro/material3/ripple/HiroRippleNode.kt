@@ -39,7 +39,7 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     }
 
     override fun onAttach() {
-        Log.d(TAG, "啊一个地道M3水波")
+        Log.d(TAG, "将贴附")
 
         coroutineScope.launch {
             interactionSource.interactions.collect { interaction ->
@@ -54,7 +54,7 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
 
     override fun onRemeasured(size: IntSize) {
         val nextRippleSize = size.toSize()
-        if (rippleSize != nextRippleSize) Log.d(TAG, "啊节点尺寸变了啊一个：${nextRippleSize.width}x${nextRippleSize.height}")
+        if (rippleSize != nextRippleSize) Log.d(TAG, "节点尺寸改变：${nextRippleSize.width}x${nextRippleSize.height}")
 
         hasValidSize = true
         rippleSize = nextRippleSize
@@ -71,7 +71,7 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     }
 
     override fun onDetach() {
-        Log.d(TAG, "啊一个水波纹肘完谢幕有感觉吗")
+        Log.d(TAG, "将脱离")
 
         ripples.values.forEach { session -> session.finish() }
         ripples.clear()
@@ -92,7 +92,7 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     }
 
     private fun addRipple(interaction: PressInteraction.Press) {
-        Log.d(TAG, "按下啊要高潮（指动画这一块）了：${interaction.pressPosition}")
+        Log.d(TAG, "将添加波纹：${interaction.pressPosition}")
 
         ripples.values.forEach { session -> session.finish() }
 
@@ -113,7 +113,7 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     }
 
     private fun removeRipple(interaction: PressInteraction.Press) {
-        Log.d(TAG, "啊一个波纹滚回山中去捏")
+        Log.d(TAG, "将移除波纹")
 
         ripples[interaction]?.finish()
     }

@@ -32,11 +32,11 @@ class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> 
     }
 
     init {
-        Log.d(TAG, "被创建呢啊一个有感觉吗")
+        Log.d(TAG, "被创建")
     }
 
     fun setContent(content: @Composable () -> Unit) {
-        Log.d(TAG, "啊被设了内容，好喜欢哥哥的大内容")
+        Log.d(TAG, "被设了内容")
 
         scene.setContent(content = content)
         scheduleFrame()
@@ -88,6 +88,6 @@ class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> 
         scene.close()
         platformContext.close()
 
-        Log.d(TAG, "啊被关闭了一个呢")
+        Log.d(TAG, "被关闭")
     }
 }

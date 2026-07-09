@@ -10,7 +10,7 @@ import android.os.Parcelable
 private data class DefaultLazyKey(private val index: Int) : Parcelable {
     override fun writeToParcel(parcel: Parcel, flags: Int) = parcel.writeInt(index)
 
-    override fun describeContents(): Int = 0
+    override fun describeContents() = 0
 
     companion object {
         @Suppress("unused")

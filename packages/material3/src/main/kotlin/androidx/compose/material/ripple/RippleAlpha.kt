@@ -24,5 +24,5 @@ class RippleAlpha(val draggedAlpha: Float, val focusedAlpha: Float, val hoveredA
         return result
     }
 
-    override fun toString(): String = "啊一个波纹阿尔法【拖动时：$draggedAlpha，焦点时：$focusedAlpha，悬浮时：$hoveredAlpha，按下时：$pressedAlpha】"
+    override fun toString(): String = "水波纹透明度【拖动时：$draggedAlpha，焦点时：$focusedAlpha，悬浮时：$hoveredAlpha，按下时：$pressedAlpha】"
 }

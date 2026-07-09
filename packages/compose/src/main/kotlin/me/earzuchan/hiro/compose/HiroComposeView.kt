@@ -47,13 +47,13 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
         layer.renderDelegate = HiroSkiaRenderDelegate { canvas, width, height, nanoTime -> scene.render(canvas = canvas, width = width, height = height, density = currentDensity(), layoutDirection = currentLayoutDirection(), nanoTime = nanoTime) }
 
-        Log.d(TAG, "啊被创建啊一个")
+        Log.d(TAG, "被创建")
     }
 
     fun setContent(content: @Composable () -> Unit) {
         check(!closed) { "HiroComposeView 已经关闭，不能再设置 Compose 内容" }
 
-        Log.d(TAG, "啊被设了内容，哥哥的大内容进来了")
+        Log.d(TAG, "被设了内容")
 
         scene.setContent(content)
     }
@@ -63,7 +63,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
         if (closed) return
 
-        Log.d(TAG, "啊被贴到了一个啊窗口上了")
+        Log.d(TAG, "被贴到了窗口上")
 
         windowInsetsReader.attach(this)
         scene.attachHostView(this)
@@ -74,7 +74,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
     }
 
     override fun onDetachedFromWindow() {
-        Log.d(TAG, "啊要从一个啊一个窗口上脱离了")
+        Log.d(TAG, "将从窗口上脱离")
 
         windowInsetsReader.detach(this)
         scene.detachHostView(this)
@@ -87,7 +87,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
         super.onWindowVisibilityChanged(visibility)
         if (closed) return
 
-        Log.d(TAG, "啊窗口啊一个可见性变了：$visibility")
+        Log.d(TAG, "窗口的可见性变了：$visibility")
 
         if (visibility == VISIBLE) layer.onHostResume() else layer.onHostPause()
     }
@@ -95,7 +95,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
     override fun onConfigurationChanged(newConfig: Configuration?) {
         super.onConfigurationChanged(newConfig)
 
-        Log.d(TAG, "啊配置变了啊一个得让画面再哦齁齁哦哦哦")
+        Log.d(TAG, "配置变了，得重绘")
 
         windowInsetsReader.requestApplyInsets()
         layer.needRender()
@@ -104,7 +104,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
     override fun onRtlPropertiesChanged(layoutDirection: Int) {
         super.onRtlPropertiesChanged(layoutDirection)
 
-        Log.d(TAG, "啊布局方向变了啊一个：$layoutDirection")
+        Log.d(TAG, "布局方向改变：$layoutDirection，得重绘")
 
         layer.needRender()
     }
@@ -126,7 +126,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
         if (closed) return
         closed = true
 
-        Log.d(TAG, "啊被关闭了一个（悲）")
+        Log.d(TAG, "被关闭")
 
         windowInsetsReader.close()
         layer.renderDelegate = null

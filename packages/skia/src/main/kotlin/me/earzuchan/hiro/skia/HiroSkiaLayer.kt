@@ -20,11 +20,11 @@ class HiroSkiaLayer(private val config: HiroSkiaLayerConfig = HiroSkiaLayerConfi
     }
 
     init {
-        Log.d(TAG, "啊创建一个哦")
+        Log.d(TAG, "被创建")
     }
 
     fun attachTo(mambaGroup: ViewGroup): HiroSkiaSurfaceView {
-        Log.d(TAG, "啊将被贴附到啊一个$mambaGroup")
+        Log.d(TAG, "将被贴附到：$mambaGroup")
 
         detach()
 
@@ -39,7 +39,7 @@ class HiroSkiaLayer(private val config: HiroSkiaLayerConfig = HiroSkiaLayerConfi
     }
 
     fun configureSurfaceView(action: HiroSkiaSurfaceView.() -> Unit) {
-        Log.d(TAG, "啊将配置一个SurfaceView")
+        Log.d(TAG, "将配置SurfaceView")
 
         surfaceView?.action()
     }
@@ -47,13 +47,13 @@ class HiroSkiaLayer(private val config: HiroSkiaLayerConfig = HiroSkiaLayerConfi
     fun needRender() = surfaceView?.scheduleFrame()
 
     fun onHostPause() {
-        Log.d(TAG, "啊宿主暂停有感觉吗")
+        Log.d(TAG, "宿主被暂停")
 
         surfaceView?.onPause()
     }
 
     fun onHostResume() {
-        Log.d(TAG, "啊宿主恢复了呜呜呜")
+        Log.d(TAG, "宿主被恢复")
 
         surfaceView?.onResume()
 
@@ -61,7 +61,7 @@ class HiroSkiaLayer(private val config: HiroSkiaLayerConfig = HiroSkiaLayerConfi
     }
 
     fun detach() {
-        Log.d(TAG, "啊断舍离有感觉吗")
+        Log.d(TAG, "将脱离SurfaceView")
 
         val view = surfaceView ?: return
 
@@ -72,7 +72,7 @@ class HiroSkiaLayer(private val config: HiroSkiaLayerConfig = HiroSkiaLayerConfi
     }
 
     override fun close() {
-        Log.d(TAG, "啊被关闭了呢哥哥")
+        Log.d(TAG, "被关闭")
 
         detach()
     }
