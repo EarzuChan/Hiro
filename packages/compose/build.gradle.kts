@@ -9,7 +9,7 @@ plugins {
     `maven-publish`
 }
 
-val windowlessComposeJar = hiroProcessedJar("windowless-compose") {
+val windowlessComposeJar = hiroProcessedJar("compose") {
     outputFileName = "hiro-processed-compose.jar"
 
     // 版本对齐 CMP 1.11.1 大版本。坐标和版本须跟随上游 CMP 所使用的来
