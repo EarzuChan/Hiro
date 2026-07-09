@@ -30,15 +30,15 @@ class HiroGradlePlugin : Plugin<Project> {
         // 配置规矩以在多个Hiro变体中选最优（Hiro变体们是已在HiroDependenciesManageRule的处理中加入的）
         project.dependencies.attributesSchema.attribute(HiroAttributes.hiroVariantKind, Action { it.disambiguationRules.add(HiroVariantKindDisambiguationRule::class.java) })
 
-        // 进行深度包剥离+变体选入
+        // 进行对本工程的每个依赖项进行深度（这个是Gradle保证的）包剥离+变体选入
         project.dependencies.components.all(HiroDependenciesManageRule::class.java)
 
-        // 对每个配置进行拨弄
+        // 对每个配置（即依赖的分组。如comp、rt）进行拨弄
         project.configurations.configureEach(Action { configuration ->
             if (!configuration.isAndroidMainClasspath()) return@Action
 
-            project.logger.lifecycle("Hiro Gradle 插件：接管了 ${project.path}:${configuration.name}")
-            configuration.attributes.attribute(HiroAttributes.hiroVariant, true) // 对暗号，以使得我们的特色变体生效
+            project.logger.lifecycle("Hiro Gradle 插件：接管了 ${project.path} 的 ${configuration.name} 分组")
+            configuration.attributes.attribute(HiroAttributes.hiroVariant, true) // 对暗号，以使得我们在DepsManRule创建的特色变体生效
 
             finalVerdict.perform(configuration)
         })

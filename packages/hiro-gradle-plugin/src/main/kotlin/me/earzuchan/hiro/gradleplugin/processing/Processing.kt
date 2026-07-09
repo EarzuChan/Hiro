@@ -11,13 +11,41 @@ import org.gradle.api.artifacts.DependenciesMetadata
 import org.gradle.api.artifacts.DependencyMetadata
 import org.gradle.api.artifacts.VariantMetadata
 import org.gradle.api.attributes.Attribute
+import org.gradle.api.attributes.AttributeDisambiguationRule
 import org.gradle.api.attributes.Bundling
 import org.gradle.api.attributes.Category
 import org.gradle.api.attributes.LibraryElements
+import org.gradle.api.attributes.MultipleCandidatesDetails
 import org.gradle.api.attributes.Usage
 import org.gradle.api.attributes.java.TargetJvmEnvironment
 import org.gradle.api.logging.Logging
 import java.util.Collections
+
+internal enum class HiroVariantKind(val wireName: String) {
+    Skiko("skiko"),
+    Desktop("desktop"),
+    Jvm("jvm");
+
+    companion object {
+        val priority: List<HiroVariantKind> = listOf(Skiko, Desktop, Jvm)
+
+        fun fromVariantName(variantName: String) = when {
+            variantName.startsWith("skiko", ignoreCase = true) -> Skiko
+
+            variantName.startsWith("desktop", ignoreCase = true) -> Desktop
+
+            else -> Jvm
+        }
+    }
+}
+
+
+internal abstract class HiroVariantKindDisambiguationRule : AttributeDisambiguationRule<String> {
+    override fun execute(details: MultipleCandidatesDetails<String>) {
+        // 按我的顺序选择变体
+        HiroVariantKind.priority.firstOrNull { kind -> details.candidateValues.contains(kind.wireName) }?.let { kind -> details.closestMatch(kind.wireName) }
+    }
+}
 
 private object HiroDependenciesStripper {
     private val logger = Logging.getLogger(HiroDependenciesStripper::class.java)
