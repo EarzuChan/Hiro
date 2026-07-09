@@ -4,7 +4,7 @@ import me.earzuchan.hiro.gradleplugin.HiroBinaryLeakAction
 import me.earzuchan.hiro.gradleplugin.HiroExtension
 import me.earzuchan.hiro.gradleplugin.misc.HiroDependencyPolicy
 import me.earzuchan.hiro.gradleplugin.processing.HiroBinaryLeakScanner
-import me.earzuchan.hiro.gradleplugin.processing.HiroKmpVariantKind
+import me.earzuchan.hiro.gradleplugin.processing.HiroVariantKind
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
@@ -26,7 +26,7 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
 
         reportKmpPackageSelectedHiroVariants(configuration, selectedThirdPartyVariants.values)
 
-        checkOfficialComposeModulesInClasspath(configuration)
+        checkComposeModulesOrJbrApiInClasspath(configuration)
 
         deepCheckLeaksInClasses(configuration)
 
@@ -68,11 +68,11 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
         })
     }
 
-    // 扫描在类路径在是否还有 Compose 官方模块
-    private fun checkOfficialComposeModulesInClasspath(configuration: Configuration) {
+    // 扫描在类路径在是否还有不想要的模块
+    private fun checkComposeModulesOrJbrApiInClasspath(configuration: Configuration) {
         val leaks = configuration.incoming.resolutionResult.allDependencies.filterIsInstance<ResolvedDependencyResult>().mapNotNull { dependency ->
-            val selectedModule = dependency.selected.moduleVersion ?: return@mapNotNull null
-            if (!HiroDependencyPolicy.isOfficialComposeModule(selectedModule.group)) return@mapNotNull null
+            val selectedModule = dependency.selected.moduleVersion ?: return@mapNotNull null // 解析不到版本，则或为断章，就跳过
+            if (!HiroDependencyPolicy.isComposeModuleOrJbrApi(selectedModule.group, selectedModule.name)) return@mapNotNull null
 
             val from = dependency.from.moduleVersion?.let { "${it.group}:${it.name}:${it.version}" } ?: dependency.from.id.displayName
 
@@ -191,7 +191,7 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
         if (!isHiroVariant(variantName, externalVariantName)) return null
 
         val searchableName = "$variantName ${externalVariantName.orEmpty()}"
-        return HiroKmpVariantKind.priority.firstOrNull { kind -> searchableName.contains(kind.wireName, ignoreCase = true) }?.wireName
+        return HiroVariantKind.priority.firstOrNull { kind -> searchableName.contains(kind.wireName, ignoreCase = true) }?.wireName
     }
 
     private enum class ClasspathRole { Compile, Runtime }

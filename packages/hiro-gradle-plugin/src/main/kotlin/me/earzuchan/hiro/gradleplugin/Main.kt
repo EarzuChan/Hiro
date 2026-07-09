@@ -3,7 +3,7 @@ package me.earzuchan.hiro.gradleplugin
 import me.earzuchan.hiro.gradleplugin.misc.HiroAndroidPackaging
 import me.earzuchan.hiro.gradleplugin.misc.HiroAttributes
 import me.earzuchan.hiro.gradleplugin.processing.HiroDependenciesManageRule
-import me.earzuchan.hiro.gradleplugin.processing.HiroKmpVariantKindDisambiguationRule
+import me.earzuchan.hiro.gradleplugin.processing.HiroVariantKindDisambiguationRule
 import me.earzuchan.hiro.gradleplugin.verdict.HiroFinalVerdict
 import org.gradle.api.Action
 import org.gradle.api.Plugin
@@ -27,12 +27,13 @@ class HiroGradlePlugin : Plugin<Project> {
         project.pluginManager.withPlugin("com.android.application", Action { HiroAndroidPackaging.addMetadataExcludes(project) })
         project.pluginManager.withPlugin("com.android.library", Action { HiroAndroidPackaging.addMetadataExcludes(project) })
 
-        // 使得Kmp库可选取Hiro特制Skiko系变体
-        project.dependencies.attributesSchema.attribute(HiroAttributes.kmpVariantKind, Action { it.disambiguationRules.add(HiroKmpVariantKindDisambiguationRule::class.java) })
+        // 配置规矩以在多个Hiro变体中选最优（Hiro变体们是已在HiroDependenciesManageRule的处理中加入的）
+        project.dependencies.attributesSchema.attribute(HiroAttributes.hiroVariantKind, Action { it.disambiguationRules.add(HiroVariantKindDisambiguationRule::class.java) })
 
         // 进行深度包剥离+变体选入
         project.dependencies.components.all(HiroDependenciesManageRule::class.java)
 
+        // 对每个配置进行拨弄
         project.configurations.configureEach(Action { configuration ->
             if (!configuration.isAndroidMainClasspath()) return@Action
 

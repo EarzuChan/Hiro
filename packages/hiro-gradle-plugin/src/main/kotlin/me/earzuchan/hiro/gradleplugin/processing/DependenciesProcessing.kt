@@ -19,15 +19,9 @@ import org.gradle.api.attributes.java.TargetJvmEnvironment
 import org.gradle.api.logging.Logging
 import java.util.Collections
 
-private object HiroDependenciesDeepStripper {
-    private val logger = Logging.getLogger(HiroDependenciesDeepStripper::class.java)
+private object HiroDependenciesStripper {
+    private val logger = Logging.getLogger(HiroDependenciesStripper::class.java)
     private val logged = Collections.synchronizedSet(linkedSetOf<String>())
-
-    private fun hiroStripLabel(isCompose: Boolean, isJbr: Boolean) = when {
-        isCompose -> "官方 Compose"
-        isJbr -> "JBR API"
-        else -> "神秘"
-    } + "依赖"
 
     fun <T : DependencyMetadata<T>> strip(metadata: DependenciesMetadata<T>, owner: String, kind: String) {
         val iterator = metadata.iterator()
@@ -35,14 +29,13 @@ private object HiroDependenciesDeepStripper {
         while (iterator.hasNext()) {
             val dependency = iterator.next()
 
-            val isOfficialComposeModule = HiroDependencyPolicy.isOfficialComposeModule(dependency.group)
-            val isJbrApi = HiroDependencyPolicy.isJbrApi(dependency)
-            if (!isOfficialComposeModule && !isJbrApi) continue // 如果不是官方 Compose 或 JBR API 的引入就不管
+            val isComposeModuleOrJbrApi = HiroDependencyPolicy.isComposeModuleOrJbrApi(dependency.group, dependency.name)
+            if (!isComposeModuleOrJbrApi) continue // 如果不是官方 Compose 或 JBR API 的引入就不管
 
             val notation = "${dependency.group}:${dependency.name}:${dependency.versionConstraint.displayName}"
             val logKey = "$owner|$kind|$notation"
 
-            if (logged.add(logKey)) logger.lifecycle("Hiro Gradle 插件：从 $owner 移除${hiroStripLabel(isOfficialComposeModule, isJbrApi)} $kind $notation")
+            if (logged.add(logKey)) logger.lifecycle("Hiro Gradle 插件：从 $owner 移除：$kind $notation")
 
             iterator.remove()
         }
@@ -50,17 +43,19 @@ private object HiroDependenciesDeepStripper {
 }
 
 abstract class HiroDependenciesManageRule : ComponentMetadataRule {
-    override fun execute(context: ComponentMetadataContext) {
+    override fun execute(context: ComponentMetadataContext) { // 对于经停本管线的每一个依赖
         val details = context.details
         val id = details.id
         val group = id.group
-        val owner = "${id.group}:${id.name}:${id.version}"
+        val name = id.name
+        val owner = "$group:$name:${id.version}"
 
         if (HiroDependencyPolicy.isHiroModule(group)) return // Hiro 包，直接放行。没有 Hiro 包，用户会自己无法使用 Compose Api。所以不需要我炸
 
-        if (HiroDependencyPolicy.isOfficialComposeModule(group)) throw GradleException("Hiro Gradle 插件：发现有官方 Compose 模块进入依赖解析，请您确保您没有直接引入 $owner")
+        // 不让这些进入
+        if (HiroDependencyPolicy.isComposeModuleOrJbrApi(group, name)) throw GradleException("Hiro Gradle 插件：发现有官方 Compose 模块 / JetbrainsRuntime API 进入依赖解析，请您确保您没有直接引入 $owner")
 
-        details.allVariants(deepStripDependencies(owner)) // 对包进行深度剥离
+        details.allVariants(stripDependencies(owner)) // 对包的依赖剥离
 
         if (!HiroDependencyPolicy.isThirdPartyKmpCandidate(group)) return // 如果不是第三方 KMP 的候选：放行
 
@@ -86,16 +81,16 @@ abstract class HiroDependenciesManageRule : ComponentMetadataRule {
     private fun ComponentMetadataDetails.addHiroVariant(variantName: String, baseVariantName: String, usage: String, owner: String) = maybeAddVariant(
         variantName, baseVariantName, makeHiroVariant(
             usage = usage,
-            variantKind = HiroKmpVariantKind.fromVariantName(baseVariantName),
+            variantKind = HiroVariantKind.fromVariantName(baseVariantName),
             owner = owner,
         )
     )
 
     // 制作特色变体
-    private fun makeHiroVariant(usage: String, variantKind: HiroKmpVariantKind, owner: String): Action<VariantMetadata> = Action { variant ->
+    private fun makeHiroVariant(usage: String, variantKind: HiroVariantKind, owner: String): Action<VariantMetadata> = Action { variant ->
         variant.attributes(Action { attributes ->
             attributes.attribute(HiroAttributes.hiroVariant, true) // 写入暗号，届时选用这个
-            attributes.attribute(HiroAttributes.kmpVariantKind, variantKind.wireName)
+            attributes.attribute(HiroAttributes.hiroVariantKind, variantKind.wireName)
 
             attributes.attribute(Category.CATEGORY_ATTRIBUTE, attributes.named(Category::class.java, Category.LIBRARY))
             attributes.attribute(Usage.USAGE_ATTRIBUTE, attributes.named(Usage::class.java, usage))
@@ -106,7 +101,7 @@ abstract class HiroDependenciesManageRule : ComponentMetadataRule {
             attributes.attribute(kotlinPlatformTypeAttribute, "androidJvm")
         })
 
-        deepStripDependencies(owner).execute(variant) // 顺带在变体内深度剥离
+        stripDependencies(owner).execute(variant) // 顺带在变体内深度剥离
     }
 
     private fun ComponentMetadataDetails.blockAndroidVariantsFromHiroClasspath() = androidVariantNames.forEach { variantName ->
@@ -127,10 +122,10 @@ abstract class HiroDependenciesManageRule : ComponentMetadataRule {
             "androidRuntimeElements-published",
         )
 
-        fun deepStripDependencies(owner: String): Action<VariantMetadata> = Action { variant ->
-            variant.withDependencies(Action { dependencies -> HiroDependenciesDeepStripper.strip(dependencies, owner, "dependency") })
+        fun stripDependencies(owner: String): Action<VariantMetadata> = Action { variant ->
+            variant.withDependencies(Action { dependencies -> HiroDependenciesStripper.strip(dependencies, owner, "dependency") })
 
-            variant.withDependencyConstraints(Action { constraints -> HiroDependenciesDeepStripper.strip(constraints, owner, "constraint") })
+            variant.withDependencyConstraints(Action { constraints -> HiroDependenciesStripper.strip(constraints, owner, "constraint") })
         }
     }
 }
