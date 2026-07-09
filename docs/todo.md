@@ -12,3 +12,4 @@
 - BuildLogic优化：是否需要再简化代码？
 - 性能优化，直通Skia：有意外闪退（小米15Ultra）
 - 考虑本机库、Compose的减小化、可被Tree-shake和架构裁剪
+- 系统导航接入这一块

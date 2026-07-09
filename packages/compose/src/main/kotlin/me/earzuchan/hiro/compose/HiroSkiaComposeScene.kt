@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import me.earzuchan.hiro.compose.internal.HiroAndroidPlatformContext
 import me.earzuchan.hiro.compose.internal.HiroAndroidUiDispatcher
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
@@ -31,6 +32,7 @@ class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> 
     private val dispatcher = HiroAndroidUiDispatcher
     private val platformContext = HiroAndroidPlatformContext(windowInsets)
     private val viewModelStoreOwner = checkNotNull(platformContext.architectureComponentsOwner.viewModelStoreOwner) { "Hiro Compose 没有可用的 ViewModelStoreOwner" }
+    private val navigationEventDispatcherOwner = platformContext.architectureComponentsOwner.navigationEventDispatcherOwner
     private val scene = CanvasLayersComposeScene(density = density, layoutDirection = layoutDirection, coroutineContext = dispatcher, platformContext = platformContext, invalidate = scheduleFrame)
     private var currentSize: IntSize? = null
     private var currentDensity: Density = density
@@ -51,6 +53,7 @@ class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> 
             CompositionLocalProvider(
                 LocalSystemTheme provides systemTheme.value,
                 LocalViewModelStoreOwner provides viewModelStoreOwner,
+                LocalNavigationEventDispatcherOwner provides navigationEventDispatcherOwner,
             ) { content() }
         }
 
