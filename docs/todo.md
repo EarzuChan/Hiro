@@ -9,5 +9,6 @@
 - 更多Input接入（虚拟触控板、键盘）
 - IME与TextField正常性
 - HGP优化：基本OK。考虑是否引入剥离豁免
+- BuildLogic优化：是否需要再简化代码？
 - 性能优化，直通Skia：有意外闪退（小米15Ultra）
 - 考虑本机库、Compose的减小化、可被Tree-shake和架构裁剪

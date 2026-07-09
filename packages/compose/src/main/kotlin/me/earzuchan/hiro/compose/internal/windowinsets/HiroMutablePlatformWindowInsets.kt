@@ -25,7 +25,7 @@ class HiroMutablePlatformWindowInsets : PlatformWindowInsets { // TIPS：AI 建�
 
     private var displayCutoutBounds by mutableStateOf(emptyList<Rect>())
 
-    override val displayCutouts: List<Rect> get() = displayCutoutBounds
+    override val displayCutouts get() = displayCutoutBounds
     override val captionBar: PlatformInsets get() = captionBarInsets
     override val displayCutout: PlatformInsets get() = displayCutoutInsets
     override val ime: PlatformInsets get() = imeInsets
@@ -100,10 +100,10 @@ data class HiroInsetsValues(val left: Int = 0, val top: Int = 0, val right: Int 
 private class HiroMutablePlatformInsets : PlatformInsets {
     private var values by mutableStateOf(HiroInsetsValues.Zero)
 
-    override val left: Int get() = values.left
-    override val top: Int get() = values.top
-    override val right: Int get() = values.right
-    override val bottom: Int get() = values.bottom
+    override val left get() = values.left
+    override val top get() = values.top
+    override val right get() = values.right
+    override val bottom get() = values.bottom
 
     fun update(next: HiroInsetsValues): Boolean {
         val normalized = next.normalized()
@@ -116,17 +116,17 @@ private class HiroMutablePlatformInsets : PlatformInsets {
 
 @OptIn(InternalComposeUiApi::class)
 private class HiroExcludedPlatformWindowInsets(private val source: HiroMutablePlatformWindowInsets, private val excludeSafeInsets: Boolean, private val excludeIme: Boolean) : PlatformWindowInsets {
-    override val displayCutouts: List<Rect> get() = if (excludeSafeInsets) emptyList() else source.displayCutouts
-    override val captionBar: PlatformInsets get() = source.captionBar.excludeWhen(excludeSafeInsets)
-    override val displayCutout: PlatformInsets get() = source.displayCutout.excludeWhen(excludeSafeInsets)
-    override val ime: PlatformInsets get() = source.ime.excludeWhen(excludeIme)
-    override val mandatorySystemGestures: PlatformInsets get() = source.mandatorySystemGestures.excludeWhen(excludeSafeInsets)
-    override val navigationBars: PlatformInsets get() = source.navigationBars.excludeWhen(excludeSafeInsets)
-    override val statusBars: PlatformInsets get() = source.statusBars.excludeWhen(excludeSafeInsets)
-    override val systemBars: PlatformInsets get() = source.systemBars.excludeWhen(excludeSafeInsets)
-    override val systemGestures: PlatformInsets get() = source.systemGestures.excludeWhen(excludeSafeInsets)
-    override val tappableElement: PlatformInsets get() = source.tappableElement.excludeWhen(excludeSafeInsets)
-    override val waterfall: PlatformInsets get() = source.waterfall.excludeWhen(excludeSafeInsets)
+    override val displayCutouts get() = if (excludeSafeInsets) emptyList() else source.displayCutouts
+    override val captionBar get() = source.captionBar.excludeWhen(excludeSafeInsets)
+    override val displayCutout get() = source.displayCutout.excludeWhen(excludeSafeInsets)
+    override val ime get() = source.ime.excludeWhen(excludeIme)
+    override val mandatorySystemGestures get() = source.mandatorySystemGestures.excludeWhen(excludeSafeInsets)
+    override val navigationBars get() = source.navigationBars.excludeWhen(excludeSafeInsets)
+    override val statusBars get() = source.statusBars.excludeWhen(excludeSafeInsets)
+    override val systemBars get() = source.systemBars.excludeWhen(excludeSafeInsets)
+    override val systemGestures get() = source.systemGestures.excludeWhen(excludeSafeInsets)
+    override val tappableElement get() = source.tappableElement.excludeWhen(excludeSafeInsets)
+    override val waterfall get() = source.waterfall.excludeWhen(excludeSafeInsets)
 }
 
 @OptIn(InternalComposeUiApi::class)

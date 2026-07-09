@@ -11,8 +11,7 @@ import androidx.savedstate.savedState
 private const val PROVIDER_KEY = "androidx.savedstate.SavedStateRegistry"
 
 internal class SaveableStateRegistryWrapper(base: SaveableStateRegistry) : SaveableStateRegistry by base, SavedStateRegistryOwner {
-    override val lifecycle: LifecycleRegistry
-        get() = getOrInitLifecycle()
+    override val lifecycle get() = getOrInitLifecycle()
 
     private var _lifecycle: LifecycleRegistry? = null
     private var _controller: SavedStateRegistryController? = null
@@ -20,18 +19,14 @@ internal class SaveableStateRegistryWrapper(base: SaveableStateRegistry) : Savea
     @Suppress("VisibleForTests")
     private fun getOrInitLifecycle(): LifecycleRegistry = _lifecycle ?: LifecycleRegistry.createUnsafe(this).also { _lifecycle = it }
 
-    private val controller: SavedStateRegistryController
-        get() = getOrInitController(savedState = null)
+    private val controller: SavedStateRegistryController get() = getOrInitController(savedState = null)
 
-    private fun getOrInitController(savedState: SavedState?): SavedStateRegistryController {
-        return _controller ?: SavedStateRegistryController.create(owner = this).also {
-            _controller = it
-            it.performRestore(savedState)
-        }
+    private fun getOrInitController(savedState: SavedState?) = _controller ?: SavedStateRegistryController.create(owner = this).also {
+        _controller = it
+        it.performRestore(savedState)
     }
 
-    override val savedStateRegistry: SavedStateRegistry
-        get() = controller.savedStateRegistry
+    override val savedStateRegistry get() = controller.savedStateRegistry
 
     init {
         val savedState = consumeRestored(key = PROVIDER_KEY) as? SavedState

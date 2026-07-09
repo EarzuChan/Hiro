@@ -69,9 +69,7 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val boundTo: HiroMutabl
         if (view.isAttachedToWindow) ViewCompat.requestApplyInsets(view)
     }
 
-    private fun readCurrentInsets(view: View) {
-        ViewCompat.getRootWindowInsets(view)?.let(::applyInsets)
-    }
+    private fun readCurrentInsets(view: View) = ViewCompat.getRootWindowInsets(view)?.let(::applyInsets)
 
     private fun applyInsets(insets: WindowInsetsCompat) {
         if (boundTo.update(insets.toHiroSnapshot())) changeWatcher()

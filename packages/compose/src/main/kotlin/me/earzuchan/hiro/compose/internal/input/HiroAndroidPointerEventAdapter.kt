@@ -98,9 +98,7 @@ internal class HiroAndroidPointerEventAdapter {
         return composePointerId
     }
 
-    private fun clearPointerIds() {
-        androidToComposePointerIds.clear()
-    }
+    private fun clearPointerIds() = androidToComposePointerIds.clear()
 
     private fun pointerType(event: MotionEvent, index: Int) = when (event.getToolType(index)) {
         MotionEvent.TOOL_TYPE_FINGER -> if (event.isFromSource(InputDevice.SOURCE_MOUSE) || event.isFromSource(InputDevice.SOURCE_TOUCHPAD)) PointerType.Mouse else PointerType.Touch

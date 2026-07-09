@@ -39,7 +39,7 @@ class HiroSkiaSurfaceView internal constructor(context: Context, layer: HiroSkia
         isFocusable = true
         isFocusableInTouchMode = true
 
-        Log.d(TAG, "啊被创建啊一个")
+        Log.d(TAG, "被创建")
     }
 
     fun scheduleFrame() {
@@ -48,7 +48,7 @@ class HiroSkiaSurfaceView internal constructor(context: Context, layer: HiroSkia
     }
 
     internal fun releaseRenderer() {
-        Log.d(TAG, "啊释放啊一个渲染器")
+        Log.d(TAG, "释放渲染器")
 
         if (Looper.myLooper() == Looper.getMainLooper()) cancelFramePumpOnMainThread() else post(::cancelFramePumpOnMainThread)
 
@@ -129,7 +129,7 @@ private class HiroSkiaSurfaceRenderer(private val layer: HiroSkiaLayer, private 
     }
 
     init {
-        Log.d(TAG, "啊被创建啊一个")
+        Log.d(TAG, "被创建")
     }
 
     fun update(frameTimeNanos: Long) {
@@ -161,7 +161,7 @@ private class HiroSkiaSurfaceRenderer(private val layer: HiroSkiaLayer, private 
         gl.glClearColor(0f, 0f, 0f, 0f)
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT)
 
-        Log.d(TAG, "啊一个啊表面被创建")
+        Log.d(TAG, "表面被创建")
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -171,7 +171,7 @@ private class HiroSkiaSurfaceRenderer(private val layer: HiroSkiaLayer, private 
         initCanvas(gl)
         requestNextFrame()
 
-        Log.d(TAG, "啊一个啊表面被改变啊")
+        Log.d(TAG, "表面被改变")
     }
 
     override fun onDrawFrame(gl: GL10?) {
@@ -192,7 +192,7 @@ private class HiroSkiaSurfaceRenderer(private val layer: HiroSkiaLayer, private 
     }
 
     fun release() {
-        Log.d(TAG, "啊一个啊被释放")
+        Log.d(TAG, "被释放")
 
         released = true
         val oldPicture = synchronized(pictureLock) {
@@ -205,7 +205,7 @@ private class HiroSkiaSurfaceRenderer(private val layer: HiroSkiaLayer, private 
     }
 
     private fun initCanvas(gl: GL10) {
-        Log.d(TAG, "啊想初始化啊一个画布")
+        Log.d(TAG, "将初始化画布")
 
         disposeCanvas()
 
@@ -233,6 +233,8 @@ private class HiroSkiaSurfaceRenderer(private val layer: HiroSkiaLayer, private 
     }
 
     private fun disposeCanvas() {
+        Log.d(TAG, "画布将关闭")
+
         canvas = null
         surface?.close()
         renderTarget?.close()
@@ -240,8 +242,6 @@ private class HiroSkiaSurfaceRenderer(private val layer: HiroSkiaLayer, private 
         surface = null
         renderTarget = null
         directContext = null
-
-        Log.d(TAG, "啊一个啊画布被处理")
     }
 
     private fun queryGlInteger(gl: GL10, name: Int) = IntBuffer.allocate(1).also { gl.glGetIntegerv(name, it) }[0]

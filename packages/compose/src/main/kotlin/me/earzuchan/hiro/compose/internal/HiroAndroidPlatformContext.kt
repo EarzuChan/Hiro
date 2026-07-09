@@ -101,13 +101,13 @@ private class HiroAndroidInputModeManager : InputModeManager {
 
 @OptIn(InternalComposeUiApi::class)
 private class HiroAndroidArchitectureComponentsOwner : PlatformArchitectureComponentsOwner, LifecycleOwner, ViewModelStoreOwner, HasDefaultViewModelProviderFactory, NavigationEventDispatcherOwner, SavedStateRegistryOwner {
-    override val lifecycleOwner: LifecycleOwner get() = this
+    override val lifecycleOwner get() = this
 
-    override val navigationEventDispatcherOwner: NavigationEventDispatcherOwner get() = this
+    override val navigationEventDispatcherOwner get() = this
 
-    override val viewModelStoreOwner: ViewModelStoreOwner get() = this
+    override val viewModelStoreOwner get() = this
 
-    override val savedStateRegistryOwner: SavedStateRegistryOwner get() = this
+    override val savedStateRegistryOwner get() = this
 
     override val lifecycle = LifecycleRegistry(this)
     override val viewModelStore = ViewModelStore()
@@ -115,11 +115,11 @@ private class HiroAndroidArchitectureComponentsOwner : PlatformArchitectureCompo
 
     private val savedStateController = SavedStateRegistryController.create(this)
 
-    override val savedStateRegistry: SavedStateRegistry get() = savedStateController.savedStateRegistry
+    override val savedStateRegistry get() = savedStateController.savedStateRegistry
 
-    override val defaultViewModelProviderFactory: ViewModelProvider.Factory = SavedStateViewModelFactory()
+    override val defaultViewModelProviderFactory = SavedStateViewModelFactory()
 
-    override val defaultViewModelCreationExtras: CreationExtras = MutableCreationExtras().also {
+    override val defaultViewModelCreationExtras = MutableCreationExtras().also {
         it[SAVED_STATE_REGISTRY_OWNER_KEY] = this
         it[VIEW_MODEL_STORE_OWNER_KEY] = this
     }

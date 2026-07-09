@@ -43,11 +43,11 @@ internal class HiroRippleSession(private var rippleSize: Size, private var touch
     }
 
     fun finish() {
-        if (finishSignal.complete(Unit)) Log.d(TAG, "啊一个会话爱我别肘：$startedAtMillis")
+        if (finishSignal.complete(Unit)) Log.d(TAG, "将完成：$startedAtMillis")
     }
 
     suspend fun play(invalidate: () -> Unit) = coroutineScope {
-        Log.d(TAG, "啊开始一个会话啊：$startedAtMillis")
+        Log.d(TAG, "将开始：$startedAtMillis")
 
         val kiraKiraJob = launch {
             while (isActive) {
@@ -69,7 +69,7 @@ internal class HiroRippleSession(private var rippleSize: Size, private var touch
         } finally {
             kiraKiraJob.cancel()
             joinAll(kiraKiraJob)
-            Log.d(TAG, "啊一个会话寄！$startedAtMillis")
+            Log.d(TAG, "将结束：$startedAtMillis")
         }
     }
 
