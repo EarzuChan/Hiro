@@ -8,7 +8,7 @@ plugins {
     `maven-publish`
 }
 
-val windowlessMaterial3Jar = hiroProcessedJar("windowless-material3") {
+val windowlessMaterial3Jar = hiroProcessedJar("material3") {
     outputFileName = "hiro-processed-material3.jar"
 
     artifact("org.jetbrains.compose.material3:material3-desktop:1.11.0-alpha07")
