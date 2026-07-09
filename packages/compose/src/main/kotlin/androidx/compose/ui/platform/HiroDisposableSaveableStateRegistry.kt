@@ -6,6 +6,7 @@ package androidx.compose.ui.platform
 import android.os.Binder
 import android.os.Bundle
 import android.os.Parcelable
+import android.util.Log
 import android.util.Size
 import android.util.SizeF
 import android.util.SparseArray
@@ -17,23 +18,28 @@ import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.savedstate.SavedStateRegistryOwner
 import java.io.Serializable
 
+private const val TAG = "HiroDisposableSavableStateRegistry"
+
+// FUCK：龟孙 Jb/谷歌，Savable写成Saveable，我Chovy，写英文给我写好来了啊
+
 internal fun DisposableSaveableStateRegistry(id: String, savedStateRegistryOwner: SavedStateRegistryOwner): DisposableSaveableStateRegistry {
-    val key = "SaveableStateRegistry:$id"
+    val key = "SavableStateRegistry:$id"
 
     val androidxRegistry = savedStateRegistryOwner.savedStateRegistry
     val bundle = androidxRegistry.consumeRestoredStateForKey(key)
     val restored: Map<String, List<Any?>>? = bundle?.toMap()
 
-    val saveableStateRegistry = SaveableStateRegistry(restored) { canBeSavedToBundle(it) }
+    val savableStateRegistry = SaveableStateRegistry(restored) { canBeSavedToBundle(it) }
+
     val registered = if (androidxRegistry.getSavedStateProvider(key) != null) false else try {
-        androidxRegistry.registerSavedStateProvider(key) { saveableStateRegistry.performSave().toBundle() }
+        androidxRegistry.registerSavedStateProvider(key) { savableStateRegistry.performSave().toBundle() }
         true
     } catch (_: IllegalArgumentException) {
-        // TODO：多个 Android-Skia Compose 容器共用同一 saveable id 时，应提供稳定且可诊断的隔离策略
+        Log.d(TAG, "保存状态提供者注册冲突：$key。TODO：多个 Compose 容器使用相同可保存ID名时，我方应提供稳定且可诊断的实例隔离策略")
         false
     }
 
-    return DisposableSaveableStateRegistry(saveableStateRegistry) { if (registered) androidxRegistry.unregisterSavedStateProvider(key) }
+    return DisposableSaveableStateRegistry(savableStateRegistry) { if (registered) androidxRegistry.unregisterSavedStateProvider(key) }
 }
 
 internal class DisposableSaveableStateRegistry(saveableStateRegistry: SaveableStateRegistry, private val onDispose: () -> Unit) : SaveableStateRegistry by saveableStateRegistry {

@@ -1,6 +1,7 @@
 package me.earzuchan.hiro.compose.internal.windowinsets
 
 import android.graphics.Rect as AndroidRect
+import android.util.Log
 import android.view.View
 import androidx.compose.ui.geometry.Rect
 import androidx.core.graphics.Insets as AndroidXInsets
@@ -11,6 +12,10 @@ import androidx.core.view.WindowInsetsCompat
 
 internal class HiroWindowInsetsFiddlerForAndroid(private val boundTo: HiroMutablePlatformWindowInsets, private val changeWatcher: () -> Unit) {
     private var hostView: View? = null
+
+    companion object {
+        private const val TAG = "HiroWindowInsetsFiddler"
+    }
 
     private val attachStateListener = object : View.OnAttachStateChangeListener {
         override fun onViewAttachedToWindow(view: View) = requestApplyInsets(view)
@@ -42,6 +47,9 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val boundTo: HiroMutabl
         view.addOnAttachStateChangeListener(attachStateListener)
         ViewCompat.setOnApplyWindowInsetsListener(view, insetsListener)
         ViewCompat.setWindowInsetsAnimationCallback(view, animationCallback)
+
+        Log.d(TAG, "已挂载")
+
         readCurrentInsets(view)
         requestApplyInsets(view)
     }
@@ -59,6 +67,8 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val boundTo: HiroMutabl
     fun close() {
         val view = hostView ?: return
 
+        Log.d(TAG, "已卸载")
+
         ViewCompat.setWindowInsetsAnimationCallback(view, null)
         ViewCompat.setOnApplyWindowInsetsListener(view, null)
         view.removeOnAttachStateChangeListener(attachStateListener)
@@ -72,7 +82,11 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val boundTo: HiroMutabl
     private fun readCurrentInsets(view: View) = ViewCompat.getRootWindowInsets(view)?.let(::applyInsets)
 
     private fun applyInsets(insets: WindowInsetsCompat) {
-        if (boundTo.update(insets.toHiroSnapshot())) changeWatcher()
+        val snapshot = insets.toHiroSnapshot()
+        if (boundTo.update(snapshot)) {
+            Log.d(TAG, "窗口Insets变化：状态栏=${snapshot.statusBars.logText()}，导航栏=${snapshot.navigationBars.logText()}，IME=${snapshot.ime.logText()}，刘海数=${snapshot.displayCutouts.size}")
+            changeWatcher()
+        }
     }
 }
 
@@ -91,6 +105,8 @@ private fun WindowInsetsCompat.toHiroSnapshot() = HiroPlatformWindowInsetsSnapsh
 )
 
 private fun AndroidXInsets.toHiroInsetsValues() = HiroInsetsValues(left, top, right, bottom)
+
+private fun HiroInsetsValues.logText() = "(${left},${top},${right},${bottom})"
 
 private fun AndroidRect.toComposeRect() = Rect(
     left = left.toFloat(),

@@ -62,7 +62,7 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
         val logKey = "${configuration.name}|${selection.module}|${selection.variantName}|${selection.externalVariantName}"
 
         if (reportedHiroVariants.add(logKey)) project.logger.lifecycle(buildString {
-            append("Hiro Gradle 插件：${configuration.displayPath()} 选择了 ${selection.module} 的 Hiro特制变体：${selection.variantName}")
+            append("Hiro Gradle 插件：在 ${configuration.displayPath()} 选择了 ${selection.module} 的 Hiro特制变体：${selection.variantName}")
             selection.externalVariantName?.let { append("，外部变体：$it") }
         })
     }
