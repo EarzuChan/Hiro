@@ -8,6 +8,8 @@ import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputRouter
@@ -23,7 +25,9 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
     private val windowInsets = HiroMutablePlatformWindowInsets()
 
-    private val scene = HiroSkiaComposeScene(scheduleFrame = { layer.needRender() }, density = currentDensity(), layoutDirection = currentLayoutDirection(), windowInsets = windowInsets)
+    private val systemTheme = mutableStateOf(currentSystemTheme())
+
+    private val scene = HiroSkiaComposeScene(scheduleFrame = { layer.needRender() }, density = currentDensity(), layoutDirection = currentLayoutDirection(), windowInsets = windowInsets, systemTheme = systemTheme)
 
     private val windowInsetsReader = HiroWindowInsetsFiddlerForAndroid(windowInsets) { layer.needRender() }
 
@@ -65,6 +69,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
         Log.d(TAG, "被贴到了窗口上")
 
+        syncSystemTheme()
         windowInsetsReader.attach(this)
         scene.attachHostView(this)
 
@@ -97,6 +102,7 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
         Log.d(TAG, "配置变了，得重绘")
 
+        syncSystemTheme()
         windowInsetsReader.requestApplyInsets()
         layer.needRender()
     }
@@ -140,6 +146,20 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
 
     private fun currentLayoutDirection() = if (layoutDirection == LAYOUT_DIRECTION_RTL) LayoutDirection.Rtl else LayoutDirection.Ltr
 
+    private fun currentSystemTheme() = when (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
+        Configuration.UI_MODE_NIGHT_YES -> SystemTheme.Dark
+        Configuration.UI_MODE_NIGHT_NO -> SystemTheme.Light
+        else -> SystemTheme.Unknown
+    }
+
+    private fun syncSystemTheme() {
+        val next = currentSystemTheme()
+        if (systemTheme.value == next) return
+
+        Log.d(TAG, "系统主题改变：${systemTheme.value.name()} -> ${next.name()}")
+        systemTheme.value = next
+    }
+
 }
 
 private fun MotionEvent.shouldLogTouchEvent() = when (actionMasked) {
@@ -166,4 +186,10 @@ private fun MotionEvent.name() = when (actionMasked) {
     MotionEvent.ACTION_OUTSIDE -> "越界"
 
     else -> "其他"
+}
+
+private fun SystemTheme.name() = when (this) {
+    SystemTheme.Dark -> "深色"
+    SystemTheme.Light -> "浅色"
+    SystemTheme.Unknown -> "未知"
 }
