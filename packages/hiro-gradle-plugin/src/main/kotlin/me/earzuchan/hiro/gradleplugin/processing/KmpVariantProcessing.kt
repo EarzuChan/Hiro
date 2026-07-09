@@ -6,13 +6,13 @@ import java.io.File
 import java.util.zip.ZipFile
 import kotlin.io.path.createTempFile
 
-internal enum class HiroKmpVariantKind(val wireName: String) {
+internal enum class HiroVariantKind(val wireName: String) {
     Skiko("skiko"),
     Desktop("desktop"),
     Jvm("jvm");
 
     companion object {
-        val priority: List<HiroKmpVariantKind> = listOf(Skiko, Desktop, Jvm)
+        val priority: List<HiroVariantKind> = listOf(Skiko, Desktop, Jvm)
 
         fun fromVariantName(variantName: String) = when {
             variantName.startsWith("skiko", ignoreCase = true) -> Skiko
@@ -25,10 +25,10 @@ internal enum class HiroKmpVariantKind(val wireName: String) {
 }
 
 
-internal abstract class HiroKmpVariantKindDisambiguationRule : AttributeDisambiguationRule<String> {
+internal abstract class HiroVariantKindDisambiguationRule : AttributeDisambiguationRule<String> {
     override fun execute(details: MultipleCandidatesDetails<String>) {
         // 按我的顺序选择变体
-        HiroKmpVariantKind.priority.firstOrNull { kind -> details.candidateValues.contains(kind.wireName) }?.let { kind -> details.closestMatch(kind.wireName) }
+        HiroVariantKind.priority.firstOrNull { kind -> details.candidateValues.contains(kind.wireName) }?.let { kind -> details.closestMatch(kind.wireName) }
     }
 }
 

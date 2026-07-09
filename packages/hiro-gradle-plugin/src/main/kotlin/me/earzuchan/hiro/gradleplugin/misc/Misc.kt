@@ -3,7 +3,6 @@
 package me.earzuchan.hiro.gradleplugin.misc
 
 import org.gradle.api.Project
-import org.gradle.api.artifacts.DependencyMetadata
 import org.gradle.api.attributes.Attribute
 
 internal object HiroAndroidPackaging {
@@ -42,7 +41,7 @@ internal object HiroAndroidPackaging {
 internal object HiroAttributes {
     val hiroVariant: Attribute<Boolean> = Attribute.of("me.earzuchan.hiro.variant", Boolean::class.javaObjectType)
 
-    val kmpVariantKind: Attribute<String> = Attribute.of("me.earzuchan.hiro.kmpVariantKind", String::class.java)
+    val hiroVariantKind: Attribute<String> = Attribute.of("me.earzuchan.hiro.kmpvariantkind", String::class.java)
 }
 
 internal object HiroDependencyPolicy {
@@ -50,14 +49,15 @@ internal object HiroDependencyPolicy {
     private const val JETBRAINS_GROUP = "org.jetbrains"
     private const val ANDROIDX_GROUP = "androidx"
 
+    fun isComposeModuleOrJbrApi(group: String, name: String) = isComposeModule(group) || isJbrApi(group, name)
+
     fun isHiroModule(group: String) = group == HIRO_GROUP
 
-    fun isJbrApi(meta: DependencyMetadata<*>) = meta.group == "$JETBRAINS_GROUP.runtime" && meta.name == "jbr-api"
+    fun isJbrApi(group: String, name: String) = group == "$JETBRAINS_GROUP.runtime" && name == "jbr-api"
 
-    fun isOfficialComposeModule(group: String) = group == "$ANDROIDX_GROUP.compose" || group.startsWith("$ANDROIDX_GROUP.compose.") || group == "$JETBRAINS_GROUP.compose" || group.startsWith("$JETBRAINS_GROUP.compose.")
+    fun isComposeModule(group: String) = group == "$ANDROIDX_GROUP.compose" || group.startsWith("$ANDROIDX_GROUP.compose.") || group == "$JETBRAINS_GROUP.compose" || group.startsWith("$JETBRAINS_GROUP.compose.")
 
     fun isJetBrainsModule(group: String) = group == JETBRAINS_GROUP || group.startsWith("$JETBRAINS_GROUP.")
 
-    fun isThirdPartyKmpCandidate(group: String) = group.isNotBlank() && !isHiroModule(group) && !isOfficialComposeModule(group) && !isJetBrainsModule(group) && !group.startsWith("androidx.") && !group.startsWith("com.android.") && !group.startsWith("org.gradle.")
+    fun isThirdPartyKmpCandidate(group: String) = group.isNotBlank() && !isHiroModule(group) && !isComposeModule(group) && !isJetBrainsModule(group) && !group.startsWith("androidx.") && !group.startsWith("com.android.") && !group.startsWith("org.gradle.")
 }
-
