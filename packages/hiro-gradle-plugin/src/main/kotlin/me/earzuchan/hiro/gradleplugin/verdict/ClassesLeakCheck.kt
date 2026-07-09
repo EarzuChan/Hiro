@@ -157,7 +157,7 @@ internal abstract class HiroClassesLeakCheckTask : DefaultTask() {
         val scanner = ClassesLeakScanner()
         val preferredAction = binaryLeakAction.get()
 
-        // 现在还不支持Strip！！
+        // TODO：现在还不支持Strip！！
 
         jarArtifacts.files.sortedBy { it.absolutePath }.forEach { file ->
             if (!file.exists()) throw GradleException("Hiro Gradle 插件：${configurationPath.get()} 的后端渗漏检查输入尚未生成：${file.absolutePath}")
@@ -166,12 +166,14 @@ internal abstract class HiroClassesLeakCheckTask : DefaultTask() {
         }
 
         if (leaks.isEmpty()) {
-            logger.lifecycle("Hiro Gradle 插件：${configurationPath.get()} 二进制后端渗漏检查通过")
+            logger.lifecycle("Hiro Gradle 插件：检查通过，${configurationPath.get()} 无非规 Android/desktop 类掺入")
             return
         }
 
         val message = buildString {
-            appendLine("Hiro Gradle 插件：${configurationPath.get()} 发现 Android/desktop 原后端二进制渗漏")
+            appendLine("Hiro Gradle 插件：${configurationPath.get()} 发现非规 Android/desktop 类掺入")
+            appendLine()
+            appendLine("情况：")
             leaks.take(80).forEach { appendLine(" - $it") }
             if (leaks.size > 80) appendLine(" - ... 另有 ${leaks.size - 80} 条")
         }

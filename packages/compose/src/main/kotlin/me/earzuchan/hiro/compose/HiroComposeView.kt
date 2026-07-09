@@ -115,6 +115,8 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
         if (event.actionMasked == MotionEvent.ACTION_DOWN) requestFocus()
 
         val handled = inputRouter.dispatchTouchEvent(event)
+        if (event.shouldLogTouchEvent()) Log.d(TAG, "触摸事件：${event.name()}，指针数：${event.pointerCount}，动作指针：${event.actionIndex}，已处理：$handled")
+
         if (handled) return true
 
         return super.dispatchTouchEvent(event)
@@ -137,4 +139,31 @@ class HiroComposeView @JvmOverloads constructor(context: Context, attrs: Attribu
     private fun currentDensity() = Density(density = resources.displayMetrics.density, fontScale = resources.configuration.fontScale)
 
     private fun currentLayoutDirection() = if (layoutDirection == LAYOUT_DIRECTION_RTL) LayoutDirection.Rtl else LayoutDirection.Ltr
+
+}
+
+private fun MotionEvent.shouldLogTouchEvent() = when (actionMasked) {
+    MotionEvent.ACTION_DOWN,
+    MotionEvent.ACTION_UP,
+
+    MotionEvent.ACTION_POINTER_DOWN,
+    MotionEvent.ACTION_POINTER_UP,
+
+    MotionEvent.ACTION_CANCEL,
+    MotionEvent.ACTION_OUTSIDE -> true
+
+    else -> false
+}
+
+private fun MotionEvent.name() = when (actionMasked) {
+    MotionEvent.ACTION_DOWN -> "按下"
+    MotionEvent.ACTION_UP -> "抬起"
+
+    MotionEvent.ACTION_POINTER_DOWN -> "多指按下"
+    MotionEvent.ACTION_POINTER_UP -> "多指抬起"
+
+    MotionEvent.ACTION_CANCEL -> "取消"
+    MotionEvent.ACTION_OUTSIDE -> "越界"
+
+    else -> "其他"
 }

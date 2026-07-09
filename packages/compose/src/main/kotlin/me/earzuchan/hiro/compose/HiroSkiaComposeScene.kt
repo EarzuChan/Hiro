@@ -5,6 +5,7 @@ import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.graphics.asComposeCanvas
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.platform.PlatformWindowInsets
 import androidx.compose.ui.scene.CanvasLayersComposeScene
 import androidx.compose.ui.unit.Density
@@ -47,6 +48,11 @@ class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> 
     internal fun detachHostView(view: View) = platformContext.detachHostView(view)
 
     internal fun sendPointerEvent(event: HiroComposePointerEvent): Boolean {
+        if (event.type != PointerEventType.Move) {
+            val historicalCount = event.pointers.sumOf { it.historical.size }
+            Log.d(TAG, "指针事件注入：${event.type.name()}，指针数：${event.pointers.size}，历史点：$historicalCount")
+        }
+
         scene.sendPointerEvent(event.type, event.pointers, event.buttons, event.keyboardModifiers, event.scrollDelta, event.timeMillis, event.nativeEvent, event.changedButton, event.scaleGestureFactor, event.panGestureOffset)
         scheduleFrame()
 
@@ -54,6 +60,8 @@ class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> 
     }
 
     internal fun cancelPointerInput() {
+        Log.d(TAG, "指针输入取消")
+
         scene.cancelPointerInput()
         scheduleFrame()
     }
@@ -67,16 +75,19 @@ class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> 
         val nextSize = IntSize(width, height)
 
         if (currentSize != nextSize) {
+            Log.d(TAG, "渲染尺寸改变：${nextSize.width}x${nextSize.height}")
             currentSize = nextSize
             scene.size = nextSize
         }
 
         if (currentDensity != density) {
+            Log.d(TAG, "渲染密度改变：density=${density.density}，fontScale=${density.fontScale}")
             currentDensity = density
             scene.density = density
         }
 
         if (currentLayoutDirection != layoutDirection) {
+            Log.d(TAG, "布局方向改变：$layoutDirection")
             currentLayoutDirection = layoutDirection
             scene.layoutDirection = layoutDirection
         }
@@ -90,4 +101,14 @@ class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> 
 
         Log.d(TAG, "被关闭")
     }
+}
+
+private fun PointerEventType.name() = when (this) {
+    PointerEventType.Press -> "按下"
+    PointerEventType.Release -> "抬起"
+    PointerEventType.Move -> "移动"
+    PointerEventType.Enter -> "进入"
+    PointerEventType.Exit -> "离开"
+    PointerEventType.Scroll -> "滚动"
+    else -> "未知"
 }

@@ -54,11 +54,14 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
 
     override fun onRemeasured(size: IntSize) {
         val nextRippleSize = size.toSize()
-        if (rippleSize != nextRippleSize) Log.d(TAG, "节点尺寸改变：${nextRippleSize.width}x${nextRippleSize.height}")
+        val sizeChanged = rippleSize != nextRippleSize
+        if (sizeChanged) Log.d(TAG, "节点尺寸改变：${nextRippleSize.width}x${nextRippleSize.height}")
 
         hasValidSize = true
         rippleSize = nextRippleSize
         targetRadius = with(requireDensity()) { if (radius.isUnspecified) getHiroRippleEndRadius(bounded, rippleSize) else radius.toPx() }
+
+        if (sizeChanged || pendingInteractions.isNotEmpty()) Log.d(TAG, "波纹几何更新：半径=$targetRadius，暂存交互=${pendingInteractions.size}")
         ripples.values.forEach { session -> session.updateGeometry(rippleSize, targetRadius) }
         pendingInteractions.forEach(::handlePressInteraction)
         pendingInteractions.clear()
@@ -80,7 +83,7 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     private val rippleColor: Color get() = color()
 
     private fun handlePressInteractionWhenReady(interaction: PressInteraction) {
-        if (hasValidSize) handlePressInteraction(interaction) else pendingInteractions.add(interaction)
+        if (hasValidSize) handlePressInteraction(interaction) else pendingInteractions.add(interaction).also { Log.d(TAG, "交互等待节点尺寸：${interaction.name()}") }
     }
 
     private fun handlePressInteraction(interaction: PressInteraction) {
@@ -92,7 +95,7 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     }
 
     private fun addRipple(interaction: PressInteraction.Press) {
-        Log.d(TAG, "将添加波纹：${interaction.pressPosition}")
+        Log.d(TAG, "将添加波纹：${interaction.pressPosition}，尺寸=${rippleSize.width}x${rippleSize.height}，半径=$targetRadius，当前数=${ripples.size}")
 
         ripples.values.forEach { session -> session.finish() }
 
@@ -113,7 +116,7 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
     }
 
     private fun removeRipple(interaction: PressInteraction.Press) {
-        Log.d(TAG, "将移除波纹")
+        Log.d(TAG, "将移除波纹：${interaction.name()}，命中=${ripples.containsKey(interaction)}，当前数=${ripples.size}")
 
         ripples[interaction]?.finish()
     }
@@ -155,3 +158,10 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
 }
 
 private val Size.center: Offset get() = Offset(width / 2f, height / 2f)
+
+private fun PressInteraction.name() = when (this) {
+    is PressInteraction.Press -> "按下"
+    is PressInteraction.Release -> "释放"
+    is PressInteraction.Cancel -> "取消"
+    else -> "未知"
+}
