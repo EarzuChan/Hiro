@@ -1,7 +1,6 @@
 package me.earzuchan.hiro.compose.internal
 
-import android.view.View
-import android.view.ViewTreeObserver
+import android.annotation.SuppressLint
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -11,8 +10,16 @@ import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.platform.PlatformArchitectureComponentsOwner
 import androidx.compose.ui.platform.PlatformContext
 import androidx.compose.ui.platform.PlatformWindowInsets
-import androidx.lifecycle.*
-import androidx.lifecycle.viewmodel.CreationExtras
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.SAVED_STATE_REGISTRY_OWNER_KEY
+import androidx.lifecycle.SavedStateViewModelFactory
+import androidx.lifecycle.VIEW_MODEL_STORE_OWNER_KEY
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.enableSavedStateHandles
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.navigationevent.NavigationEventDispatcher
 import androidx.navigationevent.NavigationEventDispatcherOwner
@@ -21,101 +28,49 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 
 @OptIn(InternalComposeUiApi::class)
-internal class HiroAndroidPlatformContext(private val hiroWindowInsets: PlatformWindowInsets) : PlatformContext.Empty() {
+internal class HiroAndroidPlatformContext(private val hiroWindowInsets: PlatformWindowInsets, requestInputMode: (InputMode) -> Boolean) : PlatformContext.Empty(), AutoCloseable {
     private val hiroArchitectureComponentsOwner = HiroAndroidArchitectureComponentsOwner()
-    private val hiroInputModeManager = HiroAndroidInputModeManager()
+    private val hiroInputModeManager = HiroAndroidInputModeManager(requestInputMode)
 
     override val architectureComponentsOwner: PlatformArchitectureComponentsOwner get() = hiroArchitectureComponentsOwner
-
     override val inputModeManager: InputModeManager get() = hiroInputModeManager
-
     override val windowInsets: PlatformWindowInsets get() = hiroWindowInsets
 
-    fun attachHostView(view: View) = hiroInputModeManager.attachHostView(view)
+    fun updateInputMode(inputMode: InputMode) = hiroInputModeManager.update(inputMode)
 
-    fun detachHostView(view: View) = hiroInputModeManager.detachHostView(view)
+    fun onHostResume() = hiroArchitectureComponentsOwner.moveTo(Lifecycle.State.RESUMED)
 
-    fun close() {
-        hiroInputModeManager.close()
-        hiroArchitectureComponentsOwner.close()
-    }
+    fun onHostPause() = hiroArchitectureComponentsOwner.moveTo(Lifecycle.State.STARTED)
+
+    override fun close() = hiroArchitectureComponentsOwner.close()
 }
 
-private class HiroAndroidInputModeManager : InputModeManager {
-    private var hostView: View? = null
-    private var hostViewTreeObserver: ViewTreeObserver? = null
-
-    private val touchModeListener = ViewTreeObserver.OnTouchModeChangeListener { isInTouchMode -> inputMode = if (isInTouchMode) InputMode.Touch else InputMode.Keyboard }
-
+private class HiroAndroidInputModeManager(private val requestFromHost: (InputMode) -> Boolean) : InputModeManager {
     override var inputMode: InputMode by mutableStateOf(InputMode.Keyboard); private set
 
-    fun attachHostView(view: View) {
-        if (hostView === view) {
-            syncInputModeFromHostView()
-            return
-        }
-
-        hostView?.let(::detachHostView)
-
-        hostView = view
-        inputMode = view.currentInputMode()
-
-        hostViewTreeObserver = view.viewTreeObserver.also { it.addOnTouchModeChangeListener(touchModeListener) }
+    fun update(next: InputMode) {
+        inputMode = next
     }
 
-    fun detachHostView(view: View) {
-        if (hostView !== view) return
-
-        hostViewTreeObserver?.takeIf { it.isAlive }?.removeOnTouchModeChangeListener(touchModeListener)
-        hostViewTreeObserver = null
-        hostView = null
-    }
-
-    fun close() = hostView?.let(::detachHostView)
-
-    override fun requestInputMode(inputMode: InputMode): Boolean {
-        val view = hostView ?: return this.inputMode == inputMode
-
-        return when (inputMode) {
-            InputMode.Touch -> {
-                syncInputModeFromHostView()
-                view.isInTouchMode
-            }
-
-            InputMode.Keyboard -> {
-                val changed = if (view.isInTouchMode) view.requestFocusFromTouch() else true
-                syncInputModeFromHostView()
-                changed
-            }
-
-            else -> false
-        }
-    }
-
-    private fun syncInputModeFromHostView() = hostView?.let { view -> inputMode = view.currentInputMode() }
-
-    private fun View.currentInputMode(): InputMode = if (isInTouchMode) InputMode.Touch else InputMode.Keyboard
-
-    // TODO：未来接入真鼠标、虚拟鼠标和触控板时，需要确认它们对输入模式的语义是否仍跟随安卓触摸模式
+    override fun requestInputMode(inputMode: InputMode): Boolean = requestFromHost(inputMode)
 }
 
 @OptIn(InternalComposeUiApi::class)
 private class HiroAndroidArchitectureComponentsOwner : PlatformArchitectureComponentsOwner, LifecycleOwner, ViewModelStoreOwner, HasDefaultViewModelProviderFactory, NavigationEventDispatcherOwner, SavedStateRegistryOwner {
     override val lifecycleOwner get() = this
-
     override val navigationEventDispatcherOwner get() = this
-
     override val viewModelStoreOwner get() = this
-
     override val savedStateRegistryOwner get() = this
 
-    override val lifecycle = LifecycleRegistry(this)
+    @SuppressLint("VisibleForTests")
+    override val lifecycle = LifecycleRegistry.createUnsafe(this)
     override val viewModelStore = ViewModelStore()
+
     override val navigationEventDispatcher = NavigationEventDispatcher()
 
     private val savedStateController = SavedStateRegistryController.create(this)
 
-    override val savedStateRegistry get() = savedStateController.savedStateRegistry
+    override val savedStateRegistry: SavedStateRegistry get() = savedStateController.savedStateRegistry
 
     override val defaultViewModelProviderFactory = SavedStateViewModelFactory()
 
@@ -128,10 +83,16 @@ private class HiroAndroidArchitectureComponentsOwner : PlatformArchitectureCompo
         savedStateController.performAttach()
         savedStateController.performRestore(null)
         enableSavedStateHandles()
-        lifecycle.currentState = Lifecycle.State.RESUMED
+        lifecycle.currentState = Lifecycle.State.CREATED
+    }
+
+    fun moveTo(state: Lifecycle.State) {
+        if (lifecycle.currentState != Lifecycle.State.DESTROYED) lifecycle.currentState = state
     }
 
     fun close() {
+        if (lifecycle.currentState == Lifecycle.State.DESTROYED) return
+
         lifecycle.currentState = Lifecycle.State.DESTROYED
         viewModelStore.clear()
     }

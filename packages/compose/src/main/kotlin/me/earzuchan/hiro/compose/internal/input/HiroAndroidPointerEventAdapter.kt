@@ -69,7 +69,7 @@ internal class HiroAndroidPointerEventAdapter {
                 keyboardModifiers = pointerKeyboardModifiers(event.metaState),
                 scrollDelta = Offset.Zero,
                 timeMillis = event.eventTime,
-                nativeEvent = event,
+                nativeEvent = null,
                 changedButton = changedButton(event),
             )
         )

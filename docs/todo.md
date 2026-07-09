@@ -13,3 +13,4 @@
 - 性能优化，直通Skia：有意外闪退（小米15Ultra）
 - 考虑本机库、Compose的减小化、可被Tree-shake和架构裁剪
 - 系统导航接入这一块
+- 切换系统颜色导致Compose重置（可能是Activity重开）。但其实有办法让Activity不重开，想办法解决一下
