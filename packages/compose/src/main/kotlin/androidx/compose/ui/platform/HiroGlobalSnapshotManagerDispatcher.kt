@@ -3,6 +3,6 @@
 package androidx.compose.ui.platform
 
 import kotlinx.coroutines.CoroutineDispatcher
-import me.earzuchan.hiro.compose.internal.HiroAndroidUiDispatcher
+import me.earzuchan.hiro.compose.internal.HiroSnapshotApplyDispatcher
 
-internal val GlobalSnapshotManagerDispatcher: CoroutineDispatcher get() = HiroAndroidUiDispatcher
+internal val GlobalSnapshotManagerDispatcher: CoroutineDispatcher get() = HiroSnapshotApplyDispatcher

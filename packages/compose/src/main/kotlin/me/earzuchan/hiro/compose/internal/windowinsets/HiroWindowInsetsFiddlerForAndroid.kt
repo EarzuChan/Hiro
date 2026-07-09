@@ -10,8 +10,9 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 
-internal class HiroWindowInsetsFiddlerForAndroid(private val boundTo: HiroMutablePlatformWindowInsets, private val changeWatcher: () -> Unit) {
+internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (HiroPlatformWindowInsetsSnapshot) -> Unit) {
     private var hostView: View? = null
+    private var lastSnapshot: HiroPlatformWindowInsetsSnapshot? = null
 
     companion object {
         private const val TAG = "HiroWindowInsetsFiddler"
@@ -83,10 +84,10 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val boundTo: HiroMutabl
 
     private fun applyInsets(insets: WindowInsetsCompat) {
         val snapshot = insets.toHiroSnapshot()
-        if (boundTo.update(snapshot)) {
-            Log.d(TAG, "窗口Insets变化：状态栏=${snapshot.statusBars.logText()}，导航栏=${snapshot.navigationBars.logText()}，IME=${snapshot.ime.logText()}，刘海数=${snapshot.displayCutouts.size}")
-            changeWatcher()
-        }
+        if (lastSnapshot == snapshot) return
+        lastSnapshot = snapshot
+        Log.d(TAG, "窗口Insets变化：状态栏=${snapshot.statusBars.logText()}，导航栏=${snapshot.navigationBars.logText()}，IME=${snapshot.ime.logText()}，刘海数=${snapshot.displayCutouts.size}")
+        changeWatcher(snapshot)
     }
 }
 
