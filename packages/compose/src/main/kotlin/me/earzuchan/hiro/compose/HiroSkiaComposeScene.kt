@@ -1,9 +1,15 @@
 package me.earzuchan.hiro.compose
 
+import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.LocalSystemTheme
+import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.graphics.asComposeCanvas
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.platform.PlatformWindowInsets
@@ -18,8 +24,8 @@ import me.earzuchan.hiro.compose.internal.windowinsets.HiroMutablePlatformWindow
 import org.jetbrains.skia.Canvas as SkiaCanvas
 
 @OptIn(InternalComposeUiApi::class)
-class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> Unit, density: Density, layoutDirection: LayoutDirection, windowInsets: PlatformWindowInsets) : AutoCloseable {
-    constructor(scheduleFrame: () -> Unit, density: Density = Density(1f), layoutDirection: LayoutDirection = LayoutDirection.Ltr, windowInsets: HiroMutablePlatformWindowInsets = HiroMutablePlatformWindowInsets()) : this(scheduleFrame, density, layoutDirection, windowInsets as PlatformWindowInsets)
+class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> Unit, density: Density, layoutDirection: LayoutDirection, windowInsets: PlatformWindowInsets, private val systemTheme: State<SystemTheme>) : AutoCloseable {
+    constructor(scheduleFrame: () -> Unit, density: Density = Density(1f), layoutDirection: LayoutDirection = LayoutDirection.Ltr, windowInsets: HiroMutablePlatformWindowInsets = HiroMutablePlatformWindowInsets(), systemTheme: State<SystemTheme> = mutableStateOf(SystemTheme.Unknown)) : this(scheduleFrame, density, layoutDirection, windowInsets as PlatformWindowInsets, systemTheme)
 
     private val dispatcher = HiroAndroidUiDispatcher
     private val platformContext = HiroAndroidPlatformContext(windowInsets)
@@ -39,7 +45,8 @@ class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> 
     fun setContent(content: @Composable () -> Unit) {
         Log.d(TAG, "被设了内容")
 
-        scene.setContent(content = content)
+        scene.setContent { CompositionLocalProvider(LocalSystemTheme provides systemTheme.value) { content() } }
+
         scheduleFrame()
     }
 
@@ -67,6 +74,7 @@ class HiroSkiaComposeScene private constructor(private val scheduleFrame: () -> 
     }
 
     // 这个是啊一个控制反转
+    @SuppressLint("RestrictedApi")
     fun render(canvas: SkiaCanvas, width: Int, height: Int, density: Density, layoutDirection: LayoutDirection, nanoTime: Long) {
         // TIPS：因为是渲染，可能高频，不LOG
 
