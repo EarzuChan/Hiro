@@ -1,38 +1,18 @@
-package me.earzuchan.hiro.gradleplugin.processing
+package me.earzuchan.hiro.gradleplugin.verdict
 
-import org.gradle.api.attributes.AttributeDisambiguationRule
-import org.gradle.api.attributes.MultipleCandidatesDetails
+import me.earzuchan.hiro.gradleplugin.HiroBinaryLeakAction
+import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.TaskAction
 import java.io.File
 import java.util.zip.ZipFile
 import kotlin.io.path.createTempFile
 
-internal enum class HiroVariantKind(val wireName: String) {
-    Skiko("skiko"),
-    Desktop("desktop"),
-    Jvm("jvm");
-
-    companion object {
-        val priority: List<HiroVariantKind> = listOf(Skiko, Desktop, Jvm)
-
-        fun fromVariantName(variantName: String) = when {
-            variantName.startsWith("skiko", ignoreCase = true) -> Skiko
-
-            variantName.startsWith("desktop", ignoreCase = true) -> Desktop
-
-            else -> Jvm
-        }
-    }
-}
-
-
-internal abstract class HiroVariantKindDisambiguationRule : AttributeDisambiguationRule<String> {
-    override fun execute(details: MultipleCandidatesDetails<String>) {
-        // 按我的顺序选择变体
-        HiroVariantKind.priority.firstOrNull { kind -> details.candidateValues.contains(kind.wireName) }?.let { kind -> details.closestMatch(kind.wireName) }
-    }
-}
-
-internal class HiroBinaryLeakScanner {
+private class ClassesLeakScanner {
     private val forbiddenPatterns = listOf(
         ForbiddenPattern(
             label = "Android Compose 原后端",
@@ -65,13 +45,12 @@ internal class HiroBinaryLeakScanner {
         ),
     )
 
-    fun scanArtifact(file: File, owner: String): List<String> =
-        when {
-            file.isDirectory -> scanDirectory(file, owner)
-            file.extension.equals("jar", ignoreCase = true) -> scanZip(file, owner)
-            file.extension.equals("aar", ignoreCase = true) -> scanAar(file, owner)
-            else -> emptyList()
-        }
+    fun scanArtifact(file: File, owner: String) = when {
+        file.isDirectory -> scanDirectory(file, owner)
+        file.extension.equals("jar", ignoreCase = true) -> scanZip(file, owner)
+        file.extension.equals("aar", ignoreCase = true) -> scanAar(file, owner)
+        else -> emptyList()
+    }
 
     private fun scanDirectory(directory: File, owner: String): List<String> {
         val leaks = mutableListOf<String>()
@@ -160,4 +139,46 @@ internal class HiroBinaryLeakScanner {
     private fun Char.isBinaryReferenceChar(): Boolean = isLetterOrDigit() || this == '/' || this == '$' || this == '_' || this == '-'
 
     private data class ForbiddenPattern(val label: String, val binaryPatterns: List<String>)
+}
+
+internal abstract class HiroClassesLeakCheckTask : DefaultTask() {
+    @get:Classpath
+    abstract val jarArtifacts: ConfigurableFileCollection
+
+    @get:Input
+    abstract val configurationPath: Property<String>
+
+    @get:Input
+    abstract val binaryLeakAction: Property<HiroBinaryLeakAction>
+
+    @TaskAction
+    fun check() {
+        val leaks = linkedSetOf<String>()
+        val scanner = ClassesLeakScanner()
+        val preferredAction = binaryLeakAction.get()
+
+        // 现在还不支持Strip！！
+
+        jarArtifacts.files.sortedBy { it.absolutePath }.forEach { file ->
+            if (!file.exists()) throw GradleException("Hiro Gradle 插件：${configurationPath.get()} 的后端渗漏检查输入尚未生成：${file.absolutePath}")
+
+            leaks += scanner.scanArtifact(file, file.run { name.ifBlank { absolutePath } })
+        }
+
+        if (leaks.isEmpty()) {
+            logger.lifecycle("Hiro Gradle 插件：${configurationPath.get()} 二进制后端渗漏检查通过")
+            return
+        }
+
+        val message = buildString {
+            appendLine("Hiro Gradle 插件：${configurationPath.get()} 发现 Android/desktop 原后端二进制渗漏")
+            leaks.take(80).forEach { appendLine(" - $it") }
+            if (leaks.size > 80) appendLine(" - ... 另有 ${leaks.size - 80} 条")
+        }
+
+        when (preferredAction) {
+            HiroBinaryLeakAction.Fail -> throw GradleException(message)
+            HiroBinaryLeakAction.Warn -> logger.warn(message)
+        }
+    }
 }

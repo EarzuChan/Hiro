@@ -1,9 +1,7 @@
 package me.earzuchan.hiro.gradleplugin.verdict
 
-import me.earzuchan.hiro.gradleplugin.HiroBinaryLeakAction
 import me.earzuchan.hiro.gradleplugin.HiroExtension
 import me.earzuchan.hiro.gradleplugin.misc.HiroDependencyPolicy
-import me.earzuchan.hiro.gradleplugin.processing.HiroBinaryLeakScanner
 import me.earzuchan.hiro.gradleplugin.processing.HiroVariantKind
 import org.gradle.api.GradleException
 import org.gradle.api.Project
@@ -15,22 +13,23 @@ import java.util.Collections
 internal class HiroFinalVerdict(private val project: Project, private val extension: HiroExtension) {
     private val reportedHiroVariants = Collections.synchronizedSet(linkedSetOf<String>())
     private val reportedVariantConsistency = Collections.synchronizedSet(linkedSetOf<String>())
-    private val scannedArtifacts = Collections.synchronizedSet(linkedSetOf<String>())
 
     private val variantSnapshotsLock = Any()
 
     private val variantSnapshots = linkedMapOf<String, MutableMap<ClasspathRole, Map<String, VariantSelection>>>()
 
-    fun perform(configuration: Configuration) = configuration.incoming.afterResolve {
-        val selectedThirdPartyVariants = collectSelectedThirdPartyKmpVariants(configuration)
+    fun perform(configuration: Configuration) {
+        attachBinaryLeakCheckTaskToAndroidLifecycle(configuration) // 这个在AfterResolve娶不到，必须挂任务
 
-        reportKmpPackageSelectedHiroVariants(configuration, selectedThirdPartyVariants.values)
+        configuration.incoming.afterResolve { // INCOMING：获取外部依赖的入口
+            val selectedThirdPartyVariants = collectSelectedThirdPartyKmpVariants(configuration)
 
-        checkComposeModulesOrJbrApiInClasspath(configuration)
+            reportKmpPackageSelectedHiroVariants(configuration, selectedThirdPartyVariants.values)
 
-        deepCheckLeaksInClasses(configuration)
+            checkComposeModulesOrJbrApiInClasspath(configuration)
 
-        checkCompileRuntimeClasspathKmpVariantConsistency(configuration, selectedThirdPartyVariants)
+            checkCompileRuntimeClasspathKmpVariantConsistency(configuration, selectedThirdPartyVariants)
+        }
     }
 
     // 收集第三方KMP变体
@@ -95,36 +94,6 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
         })
     }
 
-    // 在全部类中深度扫描渗入情况
-    private fun deepCheckLeaksInClasses(configuration: Configuration) {
-        val files = configuration.incoming.artifactView { it.attributes.attribute(artifactType, "jar") }.files.files
-
-        val leaks = linkedSetOf<String>()
-        val scanner = HiroBinaryLeakScanner()
-
-        files.sortedBy { it.absolutePath }.forEach { file ->
-            val key = "${configuration.name}|${file.absolutePath}|${file.lastModified()}|${file.length()}"
-            if (!scannedArtifacts.add(key)) return@forEach
-            leaks += scanner.scanArtifact(file, file.run { name.ifBlank { absolutePath } })
-        }
-
-        if (leaks.isEmpty()) {
-            project.logger.lifecycle("Hiro Gradle 插件：${configuration.displayPath()} 二进制后端渗漏检查通过")
-            return
-        }
-
-        val message = buildString {
-            appendLine("Hiro Gradle 插件：${configuration.displayPath()} 发现 Android/desktop 原后端二进制渗漏")
-            leaks.take(80).forEach { appendLine(" - $it") }
-            if (leaks.size > 80) appendLine(" - ... 另有 ${leaks.size - 80} 条")
-        }
-
-        when (extension.binaryLeakAction) {
-            HiroBinaryLeakAction.Fail -> throw GradleException(message)
-            HiroBinaryLeakAction.Warn -> project.logger.warn(message)
-        }
-    }
-
     private fun collectVariantMismatchMessages(compileVariants: Map<String, VariantSelection>, runtimeVariants: Map<String, VariantSelection>) = compileVariants.keys.intersect(runtimeVariants.keys).mapNotNull { moduleKey ->
         val compile = compileVariants.getValue(moduleKey)
         val runtime = runtimeVariants.getValue(moduleKey)
@@ -173,6 +142,27 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
 
     // 辅助方法
 
+    private fun attachBinaryLeakCheckTaskToAndroidLifecycle(configuration: Configuration) {
+        val variantPrefix = configuration.androidVariantPrefix() ?: return
+        val preVariantBuildTaskName = "pre${variantPrefix.capitalized()}Build" // 凑出Gradle既有任务
+
+        val task = project.tasks.register("hiroCheck${configuration.name.capitalized()}ClassesLeaks", HiroClassesLeakCheckTask::class.java) { task ->
+            task.group = "verification"
+            task.description = "检查 ${configuration.displayPath()} 是否还有 Android/desktop 原后端二进制渗漏"
+
+            task.configurationPath.set(configuration.displayPath())
+            task.binaryLeakAction.convention(project.provider { extension.binaryLeakAction })
+            task.jarArtifacts.from(configuration.incoming.artifactView { it.attributes.attribute(artifactType, "jar") }.files) // 预选仅Jar
+        }
+
+        project.tasks.configureEach { if (it.name == preVariantBuildTaskName) it.dependsOn(task) }
+    }
+
+    private fun Configuration.androidVariantPrefix() = when {
+        name.endsWith("CompileClasspath") || name.endsWith("RuntimeClasspath") -> name.dropLast(16).ifBlank { null }
+        else -> null
+    }
+
     private fun Configuration.displayPath(): String = "${project.path}:$name"
 
     private fun Configuration.classpathCoordinates(): ClasspathCoordinates? = name.lowercase().let {
@@ -193,6 +183,8 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
         val searchableName = "$variantName ${externalVariantName.orEmpty()}"
         return HiroVariantKind.priority.firstOrNull { kind -> searchableName.contains(kind.wireName, ignoreCase = true) }?.wireName
     }
+
+    private fun String.capitalized(): String = replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
     private enum class ClasspathRole { Compile, Runtime }
 
