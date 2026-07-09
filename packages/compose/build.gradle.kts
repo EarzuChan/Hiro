@@ -116,6 +116,7 @@ tasks.withType<KotlinCompile>().configureEach { compilerOptions.moduleName.set("
 
 val classicExclude = Action<ExternalModuleDependency>  {
     exclude(group = "androidx.compose.runtime")
+    exclude(group = "androidx.compose.ui")
     exclude(group = "org.jetbrains.compose.runtime")
     exclude(group = "androidx.collection")
 }
@@ -132,6 +133,7 @@ dependencies {
     api("androidx.savedstate:savedstate-compose:1.4.0", dependencyConfiguration = classicExclude)
     api("androidx.lifecycle:lifecycle-runtime-compose:2.9.4", dependencyConfiguration = classicExclude)
     api("androidx.lifecycle:lifecycle-viewmodel:2.9.4", dependencyConfiguration = classicExclude)
+    api("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4", dependencyConfiguration = classicExclude)
     api("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.4", dependencyConfiguration = classicExclude)
     api("androidx.annotation:annotation-jvm:1.10.0")
     api("androidx.collection:collection-jvm:1.6.0")
