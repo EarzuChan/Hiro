@@ -1,5 +1,5 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
-import me.earzuchan.hiro.buildlogic.hiroProcessedJar
+import me.earzuchan.hiro.buildlogic.processToHiroJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -8,9 +8,7 @@ plugins {
     `maven-publish`
 }
 
-val windowlessMaterial3Jar = hiroProcessedJar("material3") {
-    outputFileName = "hiro-processed-material3.jar"
-
+val material3Jar = processToHiroJar("material3") {
     artifact("org.jetbrains.compose.material3:material3-desktop:1.11.0-alpha07")
 
     dropPathFragment("Awt", "Swing", "JPopup", "ComposeContainer", "ComposeSceneMediator", "DesktopComposeSceneLayer", "WindowComposeSceneLayer")
@@ -43,7 +41,7 @@ tasks.withType<KotlinCompile>().configureEach { compilerOptions.moduleName.set("
 
 dependencies {
     api(project(":compose"))
-    api(windowlessMaterial3Jar.files)
+    api(material3Jar.files)
 }
 
 publishing {
@@ -56,4 +54,4 @@ publishing {
     }
 }
 
-tasks.named("check") { dependsOn(windowlessMaterial3Jar) }
+tasks.named("check") { dependsOn(material3Jar) }

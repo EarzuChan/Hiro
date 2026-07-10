@@ -26,7 +26,7 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
 
             reportKmpPackageSelectedHiroVariants(configuration, selectedThirdPartyVariants.values)
 
-            checkComposeModulesOrJbrApiInClasspath(configuration)
+            checkHiroOwnedModulesInClasspath(configuration)
 
             checkCompileRuntimeClasspathKmpVariantConsistency(configuration, selectedThirdPartyVariants)
         }
@@ -68,24 +68,24 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
     }
 
     // 扫描在类路径在是否还有不想要的模块
-    private fun checkComposeModulesOrJbrApiInClasspath(configuration: Configuration) {
+    private fun checkHiroOwnedModulesInClasspath(configuration: Configuration) {
         val leaks = configuration.incoming.resolutionResult.allDependencies.filterIsInstance<ResolvedDependencyResult>().mapNotNull { dependency ->
             val selectedModule = dependency.selected.moduleVersion ?: return@mapNotNull null // 解析不到版本，则或为断章，就跳过
-            if (!HiroDependencyPolicy.isComposeModuleOrJbrApi(selectedModule.group, selectedModule.name)) return@mapNotNull null
+            val ownedKind = HiroDependencyPolicy.hiroOwnedModuleKindOrNull(selectedModule.group, selectedModule.name) ?: return@mapNotNull null
 
             val from = dependency.from.moduleVersion?.let { "${it.group}:${it.name}:${it.version}" } ?: dependency.from.id.displayName
 
-            " - $from -> ${dependency.requested.displayName} => ${selectedModule.group}:${selectedModule.name}:${selectedModule.version}"
+            " - [${ownedKind.description}] $from -> ${dependency.requested.displayName} => ${selectedModule.group}:${selectedModule.name}:${selectedModule.version}"
         }.distinct()
 
         if (leaks.isEmpty()) {
-            project.logger.lifecycle("Hiro Gradle 插件：检查通过，${configuration.displayPath()} 无官方 Compose 模块掺入 Classpath")
+            project.logger.lifecycle("Hiro Gradle 插件：检查通过，${configuration.displayPath()} 无已由 Hiro 接管的官方模块掺入 classpath")
             return
         }
 
         throw GradleException(buildString {
-            appendLine("Hiro Gradle 插件：${configuration.displayPath()} 发现官方 Compose 模块掺入 classpath")
-            appendLine("请确保您没有引入官方 Compose 模块")
+            appendLine("Hiro Gradle 插件：${configuration.displayPath()} 发现已由 Hiro 接管的官方模块掺入 classpath")
+            appendLine("请确保您没有直接引入这些模块；第三方传递依赖应由 Hiro Gradle 插件自动剥离")
             appendLine()
             appendLine("掺入的情况：")
 

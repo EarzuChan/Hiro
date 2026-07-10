@@ -57,13 +57,12 @@ private object HiroDependenciesStripper {
         while (iterator.hasNext()) {
             val dependency = iterator.next()
 
-            val isComposeModuleOrJbrApi = HiroDependencyPolicy.isComposeModuleOrJbrApi(dependency.group, dependency.name)
-            if (!isComposeModuleOrJbrApi) continue // 如果不是官方 Compose 或 JBR API 的引入就不管
+            val ownedKind = HiroDependencyPolicy.hiroOwnedModuleKindOrNull(dependency.group, dependency.name) ?: continue
 
             val notation = "${dependency.group}:${dependency.name}:${dependency.versionConstraint.displayName}"
             val logKey = "$owner|$kind|$notation"
 
-            if (logged.add(logKey)) logger.lifecycle("Hiro Gradle 插件：从 $owner 移除：$kind $notation")
+            if (logged.add(logKey)) logger.lifecycle("Hiro Gradle 插件：从 $owner 移除已由 Hiro 接管的${ownedKind.description}：$kind $notation")
 
             iterator.remove()
         }
@@ -80,8 +79,8 @@ abstract class HiroDependenciesManageRule : ComponentMetadataRule {
 
         if (HiroDependencyPolicy.isHiroModule(group)) return // Hiro 包，直接放行。没有 Hiro 包，用户会自己无法使用 Compose Api。所以不需要我炸
 
-        // 不让这些进入
-        if (HiroDependencyPolicy.isComposeModuleOrJbrApi(group, name)) throw GradleException("Hiro Gradle 插件：发现有官方 Compose 模块 / JetbrainsRuntime API 进入依赖解析，请您确保您没有直接引入 $owner")
+        val ownedKind = HiroDependencyPolicy.hiroOwnedModuleKindOrNull(group, name)
+        if (ownedKind != null) throw GradleException("Hiro Gradle 插件：发现已由 Hiro 接管的${ownedKind.description}进入依赖解析，请确保没有直接引入 $owner")
 
         details.allVariants(stripDependencies(owner)) // 对包的依赖剥离
 

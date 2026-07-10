@@ -43,21 +43,3 @@ internal object HiroAttributes {
 
     val hiroVariantKind: Attribute<String> = Attribute.of("me.earzuchan.hiro.kmpvariantkind", String::class.java)
 }
-
-internal object HiroDependencyPolicy {
-    const val HIRO_GROUP = "me.earzuchan.hiro"
-    private const val JETBRAINS_GROUP = "org.jetbrains"
-    private const val ANDROIDX_GROUP = "androidx"
-
-    fun isComposeModuleOrJbrApi(group: String, name: String) = isComposeModule(group) || isJbrApi(group, name)
-
-    fun isHiroModule(group: String) = group == HIRO_GROUP
-
-    fun isJbrApi(group: String, name: String) = group == "$JETBRAINS_GROUP.runtime" && name == "jbr-api"
-
-    fun isComposeModule(group: String) = group == "$ANDROIDX_GROUP.compose" || group.startsWith("$ANDROIDX_GROUP.compose.") || group == "$JETBRAINS_GROUP.compose" || group.startsWith("$JETBRAINS_GROUP.compose.")
-
-    fun isJetBrainsModule(group: String) = group == JETBRAINS_GROUP || group.startsWith("$JETBRAINS_GROUP.")
-
-    fun isThirdPartyKmpCandidate(group: String) = group.isNotBlank() && !isHiroModule(group) && !isComposeModule(group) && !isJetBrainsModule(group) && !group.startsWith("androidx.") && !group.startsWith("com.android.") && !group.startsWith("org.gradle.")
-}
