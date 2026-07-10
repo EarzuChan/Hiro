@@ -14,7 +14,7 @@ import me.earzuchan.hiro.compose.internal.architecture.HiroArchitectureComponent
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 
 @OptIn(InternalComposeUiApi::class)
-internal class HiroAndroidPlatformContext(private val hiroWindowInsets: PlatformWindowInsets, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport) : PlatformContext.Empty(), AutoCloseable {
+internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWindowInsets, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport) : PlatformContext.Empty(), AutoCloseable {
     private val hiroArchitectureComponentsOwner = HiroArchitectureComponentsOwner(
         restoredState = savedStateTransport.consumeRestoredState(),
         publishSavedState = savedStateTransport::publishSavedState,

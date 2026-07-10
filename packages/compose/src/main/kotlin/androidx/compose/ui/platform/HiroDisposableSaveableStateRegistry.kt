@@ -6,12 +6,11 @@ package androidx.compose.ui.platform
 import android.util.Log
 import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.savedstate.SavedStateRegistryOwner
-import me.earzuchan.hiro.compose.glue.HiroSavableStateBundleCodec
+import me.earzuchan.hiro.compose.internal.glue.HiroSavableStateBundleCodec
 
 private const val TAG = "HiroDisposableSavableStateRegistry"
 
 // FUCK：龟孙 Jb/谷歌，Savable写成Saveable，我Chovy，写英文给我写好来了啊
-
 internal fun DisposableSaveableStateRegistry(id: String, savedStateRegistryOwner: SavedStateRegistryOwner): DisposableSaveableStateRegistry {
     val key = "SavableStateRegistry:$id"
 
@@ -19,7 +18,7 @@ internal fun DisposableSaveableStateRegistry(id: String, savedStateRegistryOwner
     val bundle = androidxRegistry.consumeRestoredStateForKey(key)
     val restored = bundle?.let(HiroSavableStateBundleCodec::decodeRegistry)
 
-    val savableStateRegistry = SaveableStateRegistry(restored, HiroSavableStateBundleCodec::canBeSaved)
+    val savableStateRegistry = SaveableStateRegistry(restored, HiroSavableStateBundleCodec::canBeSaved) // CanBeSave这一块
 
     val registered = if (androidxRegistry.getSavedStateProvider(key) != null) false else try {
         androidxRegistry.registerSavedStateProvider(key) { HiroSavableStateBundleCodec.encodeRegistry(savableStateRegistry.performSave()) }

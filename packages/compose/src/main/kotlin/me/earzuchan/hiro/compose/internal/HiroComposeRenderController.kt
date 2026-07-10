@@ -20,13 +20,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal data class HiroComposeEnvironment(val density: Density, val layoutDirection: LayoutDirection, val systemTheme: SystemTheme)
 
-internal class HiroComposeRenderController(
-    private val layer: HiroSkiaLayer,
-    initialEnvironment: HiroComposeEnvironment,
-    private val requestInputMode: (InputMode) -> Boolean,
-    private val requestNavigationBackHandling: (Boolean) -> Boolean,
-    private val savedStateTransport: HiroSavedStateTransport,
-) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate {
+internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, initialEnvironment: HiroComposeEnvironment, private val requestInputMode: (InputMode) -> Boolean, private val requestNavigationBackHandling: (Boolean) -> Boolean, private val savedStateTransport: HiroSavedStateTransport) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate {
     private val commands = ConcurrentLinkedQueue<HiroComposeCommand>()
     private val drainScheduled = AtomicBoolean(false)
     private val state = AtomicReference(HiroComposeRenderState.WaitingForRenderThread)
