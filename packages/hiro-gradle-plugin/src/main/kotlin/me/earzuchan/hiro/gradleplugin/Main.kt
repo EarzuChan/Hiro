@@ -10,7 +10,7 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 
-// TIPS：HGP剔除普通包中对Compose的依赖，使Kmp包能采用Hiro特制Skiko系变体，并校验最终类路径+原安卓/桌面特有类掺入情况
+// TIPS：HGP 剔除普通包中已由 Hiro 接管的依赖，使 KMP 包采用 Hiro 特制 Skiko 系变体，并校验最终类路径与原安卓、桌面特有类掺入情况
 
 enum class HiroBinaryLeakAction { Fail, Warn }
 

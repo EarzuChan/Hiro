@@ -1,5 +1,5 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
-import me.earzuchan.hiro.buildlogic.hiroProcessedJar
+import me.earzuchan.hiro.buildlogic.processToHiroJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -9,9 +9,7 @@ plugins {
     `maven-publish`
 }
 
-val windowlessComposeJar = hiroProcessedJar("compose") {
-    outputFileName = "hiro-processed-compose.jar"
-
+val composeJar = processToHiroJar("compose") {
     // 版本对齐 CMP 1.11.1 大版本。坐标和版本须跟随上游 CMP 所使用的来
     artifacts(
         "androidx.compose.runtime:runtime-desktop:1.11.2",
@@ -30,6 +28,8 @@ val windowlessComposeJar = hiroProcessedJar("compose") {
         "org.jetbrains.compose.ui:ui-unit-desktop:1.11.1",
         "org.jetbrains.compose.ui:ui-util-desktop:1.11.1"
     )
+
+    // 处理
 
     dropPathPrefix("androidx/compose/ui/awt/")
 
@@ -67,6 +67,8 @@ val windowlessComposeJar = hiroProcessedJar("compose") {
         "androidx/compose/ui/platform/DesktopUriHandler"
     )
 
+    // 校验
+
     requireJarEntry(
         "androidx/compose/ui/scene/CanvasLayersComposeScene_skikoKt.class",
         "androidx/compose/ui/scene/ComposeSceneRecomposer.class",
@@ -95,6 +97,37 @@ val windowlessComposeJar = hiroProcessedJar("compose") {
     )
 }
 
+val architectureComposeAdaptersJar = processToHiroJar("architecture-compose-adapters") {
+    // 适配层保留原包名和 API，由 Hiro 统一提供；基础状态类型仍使用 Android 官方实现
+    artifacts(
+        "androidx.lifecycle:lifecycle-runtime-compose-desktop:2.10.0",
+        "androidx.lifecycle:lifecycle-viewmodel-compose-android:2.10.0",
+        "androidx.savedstate:savedstate-compose-desktop:1.4.0"
+    )
+
+    // FUCK：这他妈的是写错了吧，这都是纯校验，无处理。处理在哪了我Chovy，处理给我处理好了呀
+
+    requireJarEntry(
+        "androidx/lifecycle/compose/LocalLifecycleOwnerKt.class",
+        "androidx/lifecycle/compose/RememberLifecycleOwnerKt.class",
+        "androidx/lifecycle/viewmodel/compose/LocalViewModelStoreOwner.class",
+        "androidx/lifecycle/viewmodel/compose/ViewModelKt.class",
+        "androidx/savedstate/compose/LocalSavedStateRegistryOwnerKt.class",
+        "META-INF/lifecycle-runtime-compose.kotlin_module",
+        "META-INF/lifecycle-viewmodel-compose.kotlin_module",
+        "META-INF/savedstate-compose.kotlin_module"
+    )
+
+    forbidJarEntryFragment(
+        "androidx/compose/runtime/Composer.class",
+        "androidx/lifecycle/Lifecycle.class",
+        "androidx/lifecycle/ViewModel.class",
+        "androidx/lifecycle/ViewModelStore.class",
+        "androidx/savedstate/SavedState.class",
+        "androidx/savedstate/SavedStateRegistry.class"
+    )
+}
+
 android {
     namespace = "${HiroBuildConfig.namespace}.compose"
     compileSdk = HiroBuildConfig.androidCompileSdk
@@ -114,10 +147,21 @@ android {
 
 tasks.withType<KotlinCompile>().configureEach { compilerOptions.moduleName.set("hiro-compose") }
 
-val classicExclude = Action<ExternalModuleDependency>  {
+val excludePwned = Action<ExternalModuleDependency>  {
     exclude(group = "androidx.compose.runtime")
     exclude(group = "androidx.compose.ui")
     exclude(group = "org.jetbrains.compose.runtime")
+
+    exclude(group = "androidx.lifecycle", module = "lifecycle-runtime-compose")
+    exclude(group = "androidx.lifecycle", module = "lifecycle-viewmodel-compose")
+
+    exclude(group = "androidx.savedstate", module = "savedstate-compose")
+}
+
+val excludePwnedAndJvm = Action<ExternalModuleDependency> {
+    excludePwned(this)
+
+    exclude(group = "androidx.annotation")
     exclude(group = "androidx.collection")
 }
 
@@ -126,19 +170,22 @@ dependencies {
 
     implementation(libs.androidx.core)
 
-    // CMP 相关依赖。坐标和版本须跟随上游 CMP 所使用的来
-    api(windowlessComposeJar.files)
-    // 下面这些，不需要处理，一般不会导致冲突，Gradle一般能智能合并
-    api("androidx.navigationevent:navigationevent:1.1.2", dependencyConfiguration = classicExclude)
-    api("androidx.navigationevent:navigationevent-compose:1.1.2", dependencyConfiguration = classicExclude)
-    api("androidx.savedstate:savedstate-compose:1.4.0", dependencyConfiguration = classicExclude)
-    api("androidx.lifecycle:lifecycle-runtime-compose:2.9.4", dependencyConfiguration = classicExclude)
-    api("androidx.lifecycle:lifecycle-viewmodel:2.9.4", dependencyConfiguration = classicExclude)
-    api("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4", dependencyConfiguration = classicExclude)
-    api("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.4", dependencyConfiguration = classicExclude)
+    // CMP 相关依赖，经处理进Jar。坐标和版本基本跟随上游 CMP 所使用的来
+    api(composeJar.files)
+    api(architectureComposeAdaptersJar.files)
+
+    // 下面这些，不需要处理进Jar，一般不会导致冲突，Gradle一般能智能合并
+    api("androidx.navigationevent:navigationevent:1.1.2", dependencyConfiguration = excludePwnedAndJvm)
+    api("androidx.navigationevent:navigationevent-compose:1.1.2", dependencyConfiguration = excludePwnedAndJvm)
     api("androidx.annotation:annotation-jvm:1.10.0")
     api("androidx.collection:collection-jvm:1.6.0")
     runtimeOnly("org.jetbrains.kotlinx:atomicfu-jvm:0.28.0") // 有被CMP所依赖
+
+    // 基础状态类型由 Android 与 Hiro 共用，不属于 Hiro 接管模块
+    api("androidx.savedstate:savedstate:1.4.0", dependencyConfiguration = excludePwned)
+    api("androidx.lifecycle:lifecycle-runtime:2.10.0", dependencyConfiguration = excludePwned)
+    api("androidx.lifecycle:lifecycle-viewmodel:2.10.0", dependencyConfiguration = excludePwned)
+    api("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.10.0", dependencyConfiguration = excludePwned)
 }
 
 publishing {
@@ -151,4 +198,4 @@ publishing {
     }
 }
 
-tasks.named("check") { dependsOn(windowlessComposeJar) }
+tasks.named("check") { dependsOn(composeJar, architectureComposeAdaptersJar) }
