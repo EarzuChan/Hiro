@@ -21,40 +21,20 @@ import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.snapshots.SnapshotMutableState
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.core.util.size
+import me.earzuchan.hiro.compose.savable.HiroSavableStateCodec
+import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 import java.io.Serializable
 import java.util.IdentityHashMap
 import java.util.LinkedHashMap
 
-internal object HiroSavableStateBundleCodec {
-    private const val TYPE = "t"
-    private const val VALUE = "v"
-    private const val VALUES = "vs"
-    private const val KEY = "k"
-    private const val POLICY = "p"
-    private const val STATE_KIND = "s"
-    private const val COMPONENT_TYPE = "c"
-
-    private const val TYPE_NULL = 0
-    private const val TYPE_STATE = 1
-    private const val TYPE_LIST = 2
-    private const val TYPE_MAP = 3
-    private const val TYPE_SPARSE_ARRAY = 4
-    private const val TYPE_ARRAY = 5
-    private const val TYPE_PARCELABLE = 6
-    private const val TYPE_SERIALIZABLE = 7
-    private const val TYPE_BINDER = 8
-    private const val TYPE_SIZE = 9
-    private const val TYPE_SIZE_F = 10
-
-    private const val POLICY_NEVER_EQUAL = 0
-    private const val POLICY_STRUCTURAL_EQUALITY = 1
-    private const val POLICY_REFERENTIAL_EQUALITY = 2
-
-    private const val STATE_KIND_OBJECT = 0
-    private const val STATE_KIND_INT = 1
-    private const val STATE_KIND_LONG = 2
-    private const val STATE_KIND_FLOAT = 3
-    private const val STATE_KIND_DOUBLE = 4
+internal class HiroSavableStateBundleCodec(
+    private val configuration: HiroSavableStateConfiguration,
+    private val classLoader: ClassLoader,
+) {
+    private val kotlinSerialization = HiroKotlinSerializationSavableAdapter(
+        configuration = configuration.kotlinSerializationConfiguration,
+        classLoader = classLoader,
+    )
 
     fun canBeSaved(value: Any?): Boolean = canBeSaved(value, IdentityHashMap())
 
@@ -65,7 +45,7 @@ internal object HiroSavableStateBundleCodec {
     }
 
     fun decodeRegistry(bundle: Bundle): Map<String, List<Any?>> {
-        bundle.classLoader = javaClass.classLoader
+        bundle.classLoader = classLoader
 
         return buildMap {
             bundle.keySet().forEach { key ->
@@ -104,7 +84,9 @@ internal object HiroSavableStateBundleCodec {
             }
         }
 
-        return value is Serializable
+        if (value is Serializable) return true
+        if (configuration.codecFor(value::class) != null) return true
+        return kotlinSerialization.canSerialize(value)
     }
 
     private fun encodeValue(value: Any?): Bundle {
@@ -177,13 +159,13 @@ internal object HiroSavableStateBundleCodec {
                     putSerializable(VALUE, value)
                 }
 
-                else -> error("Hiro 保存状态编码器遗漏了已允许类型：${value::class.java.name}")
+                else -> encodeExtendedValue(value)
             }
         }
     }
 
     private fun decodeValue(encoded: Bundle): Any? {
-        encoded.classLoader = javaClass.classLoader
+        encoded.classLoader = classLoader
 
         return when (val type = encoded.getInt(TYPE, -1)) {
             TYPE_NULL -> null
@@ -205,7 +187,7 @@ internal object HiroSavableStateBundleCodec {
             }
 
             TYPE_ARRAY -> {
-                val componentType = Class.forName(checkNotNull(encoded.getString(COMPONENT_TYPE)))
+                val componentType = Class.forName(checkNotNull(encoded.getString(COMPONENT_TYPE)), false, classLoader)
                 val values = checkNotNull(encoded.getParcelableArrayList<Bundle>(VALUES)).map(::decodeValue)
                 java.lang.reflect.Array.newInstance(componentType, values.size).also { array ->
                     values.forEachIndexed { index, value -> java.lang.reflect.Array.set(array, index, value) }
@@ -222,8 +204,38 @@ internal object HiroSavableStateBundleCodec {
 
             TYPE_SERIALIZABLE -> encoded.getSerializable(VALUE)
 
+            TYPE_CUSTOM -> encoded.decodeCustomValue()
+
+            TYPE_KOTLIN_SERIALIZED -> kotlinSerialization.deserialize(
+                className = checkNotNull(encoded.getString(CLASS_NAME)) { "Hiro Kotlin 序列化状态缺少类名" },
+                state = checkNotNull(encoded.getBundle(VALUE)) { "Hiro Kotlin 序列化状态缺少负载" },
+            )
+
             else -> error("Hiro 保存状态含有未知类型标记：$type")
         }
+    }
+
+    private fun Bundle.encodeExtendedValue(value: Any) {
+        val customCodec = configuration.codecFor(value::class)
+        if (customCodec != null) {
+            putInt(TYPE, TYPE_CUSTOM)
+            putString(TYPE_ID, customCodec.typeId)
+            putBundle(VALUE, customCodec.serializeAny(value))
+            return
+        }
+
+        check(kotlinSerialization.canSerialize(value)) { "Hiro 保存状态编码器遗漏了已允许类型：${value::class.java.name}" }
+        putInt(TYPE, TYPE_KOTLIN_SERIALIZED)
+        putString(CLASS_NAME, value.javaClass.name)
+        putBundle(VALUE, kotlinSerialization.serialize(value))
+    }
+
+    private fun Bundle.decodeCustomValue(): Any {
+        val typeId = checkNotNull(getString(TYPE_ID)) { "Hiro 自定义 SavableState 缺少 typeId" }
+        val codec = checkNotNull(configuration.codecFor(typeId)) { "恢复 Hiro 状态时没有注册 typeId 为 $typeId 的 Codec" }
+        val state = checkNotNull(getBundle(VALUE)) { "Hiro 自定义 SavableState 缺少负载：$typeId" }
+        state.classLoader = classLoader
+        return codec.deserializeAny(state)
     }
 
     private fun SnapshotMutableState<*>.policyCodeOrNull() = when {
@@ -259,5 +271,47 @@ internal object HiroSavableStateBundleCodec {
         POLICY_STRUCTURAL_EQUALITY -> structuralEqualityPolicy()
         POLICY_REFERENTIAL_EQUALITY -> referentialEqualityPolicy()
         else -> error("Hiro 保存状态含有未知 MutableState 策略：$policy")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun HiroSavableStateCodec<*>.serializeAny(value: Any) = (this as HiroSavableStateCodec<Any>).serialize(value)
+
+    @Suppress("UNCHECKED_CAST")
+    private fun HiroSavableStateCodec<*>.deserializeAny(state: Bundle) = (this as HiroSavableStateCodec<Any>).deserialize(state)
+
+    private companion object {
+        const val TYPE = "t"
+        const val VALUE = "v"
+        const val VALUES = "vs"
+        const val KEY = "k"
+        const val POLICY = "p"
+        const val STATE_KIND = "s"
+        const val COMPONENT_TYPE = "c"
+        const val TYPE_ID = "i"
+        const val CLASS_NAME = "n"
+
+        const val TYPE_NULL = 0
+        const val TYPE_STATE = 1
+        const val TYPE_LIST = 2
+        const val TYPE_MAP = 3
+        const val TYPE_SPARSE_ARRAY = 4
+        const val TYPE_ARRAY = 5
+        const val TYPE_PARCELABLE = 6
+        const val TYPE_SERIALIZABLE = 7
+        const val TYPE_BINDER = 8
+        const val TYPE_SIZE = 9
+        const val TYPE_SIZE_F = 10
+        const val TYPE_CUSTOM = 11
+        const val TYPE_KOTLIN_SERIALIZED = 12
+
+        const val POLICY_NEVER_EQUAL = 0
+        const val POLICY_STRUCTURAL_EQUALITY = 1
+        const val POLICY_REFERENTIAL_EQUALITY = 2
+
+        const val STATE_KIND_OBJECT = 0
+        const val STATE_KIND_INT = 1
+        const val STATE_KIND_LONG = 2
+        const val STATE_KIND_FLOAT = 3
+        const val STATE_KIND_DOUBLE = 4
     }
 }

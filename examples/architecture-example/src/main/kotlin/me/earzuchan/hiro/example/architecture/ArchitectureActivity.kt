@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import me.earzuchan.hiro.compose.setHiroComposeContent
+import me.earzuchan.hiro.example.architecture.savable.architectureSavableStateConfiguration
 import me.earzuchan.hiro.example.architecture.viewmodel.ArchitectureViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.util.concurrent.atomic.AtomicBoolean
@@ -22,7 +23,7 @@ class ArchitectureActivity : ComponentActivity() {
 
         Log.i(ArchitectureViewModel.TAG, "ACTIVITY_VM id=${activityIdentity.instanceId} thread=${activityIdentity.creationThread} count=${activityIdentity.count}")
 
-        setHiroComposeContent { ArchitectureApp(activityIdentity = activityIdentity, onRecreateActivity = ::requestRecreation) }
+        setHiroComposeContent(architectureSavableStateConfiguration) { ArchitectureApp(activityIdentity = activityIdentity, onRecreateActivity = ::requestRecreation) }
     }
 
     override fun onDestroy() {

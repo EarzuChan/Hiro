@@ -25,7 +25,7 @@
 ## 提供的玩意
 
 - Hiro Skia：对 Skia（Skiko）的打包，在安卓上提供 `SkiaLayer` 和 `SkiaSurfaceView`。这也是 Hiro Compose 的根基。
-- Hiro Compose：对 Compose Multiplatform 的 UI/Runtime/Foundation 等的 Skia（Skiko）/Desktop（即 Jvm）进行打包，并补齐了在安卓上的体验（接入各种事件，并提供 HiroComposeView等）。
+- Hiro Compose：基于 Compose Multiplatform 的 UI/Runtime/Foundation 等的 SkikoDesktop 版本以及相关组件作为底版制作，并深度修补，尽力补齐在安卓上的体验（接入各种事件，并提供 HiroComposeView等）。
 - Hiro Material 3：对 Compose Multiplatform 的 Material 3 的 Skia（Skiko）/Desktop（即 Jvm）的打包与体验补齐。
 - Hiro Gradle Plugin：帮助用户实现无感对第三方 Compose 包的 Skia（Skiko）/Desktop 模块转用（ Android 转用 Skia（Skiko）/Desktop，并阻断对 AndroidX Compose / Compose Multiplatform 的 Android 的依赖引入）。
 - Examples，几个使用例：普通 Hiro Compose、Hiro Compose Material 3、Hiro Compose + 第三方包。
@@ -71,11 +71,12 @@
 
 ## 说明
 
-- 上游更新与依赖关系：本项目的 Compose 和 Skiko 内部上游依赖会随 Compose Multiplatform（CMP）的主要稳定版本一同更新。此外，当使用 Hiro Compose 或 Hiro Material 3 时，您无需引入官方（原始）的Compose 依赖项（无论是 AndroidX 还是 CMP）。这能确保所有 Compose 内容都基于我们特定的类路径（Hiro 独家的 Android Compose Skiko）进行解析。我们的 Hiro Gradle 插件（HGP）也会帮您使您和您的依赖不额外引入原版 Compose。
-- Material 3 水波纹复刻：我们根据 AOSP Material 3 水波纹动画的底层原理，为 Compose Skiko 复刻该效果。这使得在低版本 Android、魔改 ROM 上也能有一致的 Material 3 水波纹体验。这个复刻已内含在 Hiro Material 3 中，我们或许之后会另外贡献给上游CMP
-- JNI 修复：我们修复了 JetBrains Skiko Android 原生库中存在的 `JNI Critical Section Violation: using JNI after critical get` 问题。Hiro Skia 也已含有我们修复后构建的本机库（x64 和 Arm64）。我们或许之后会另外贡献给上游仓库
-- Hiro Skia 的局限性：Hiro Skia 基本上是为 Hiro Compose 打造的。我们没有直接依赖存在已知 Bug 的 JetBrains 官方 Android 示例，而是实现了一套轻量级的 Skia 的 Layer 和 SurfaceView，对于 Hiro Compose 的显示是基本够用，而独立的 Skia 承载用途，则未经深度测试
-   
+- 本项目的 Compose 和 Skiko 内部上游依赖会随 Compose Multiplatform（CMP）的主要稳定版本一同更新。此外，当使用 Hiro Compose 或 Hiro Material 3 时，您无需引入官方（原始）的Compose 依赖项（无论是 AndroidX 还是 CMP）。这能确保所有 Compose 内容都基于我们特定的类路径（Hiro 独家的 Android Compose Skiko）进行解析。我们的 Hiro Gradle 插件（HGP）也会帮您使您和您的依赖不额外引入原版 Compose
+- 我们根据 AOSP Material 3 水波纹动画的底层原理，使用 Skiko 图形栈复刻了该效果。这使得在低版本 Android、魔改 ROM 上也能有一致的 Material 3 水波纹体验。这个复刻已内含在 Hiro Material 3 中，我们或许之后会另外贡献给上游CMP
+- 我们修复了 JetBrains Skiko Android 原生库中存在的 `JNI Critical Section Violation: using JNI after critical get` 问题。Hiro Skia 也已含有我们修复后构建的本机库（x64 和 Arm64）。我们或许之后会另外贡献给上游仓库
+- Hiro Skia 基本上是为 Hiro Compose 打造的。我们没有直接依赖存在已知 Bug（比如把 `makeWH` 传成了 `width,width`）的 JetBrains 官方安卓示例，而是实现了一套轻量级的 Skia 的 Layer 和 SurfaceView，对于 Hiro Compose 的显示是基本够用，而独立的 Skia 承载用途，则未经深度测试
+- Hiro Compose 的 Compose 和 Skia/GL 跑在独立线程，通过状态机模型与安卓主线程往来；Hiro Compose 世界中的 ViewModelStore 与 安卓世界中的（如 Activity）不互通，这是设计，为了性能考量。Hiro Compose 补齐了基本的安卓事件输入（点击、导航对接等）、Lifecycle 和 SavedState 适配（并提供了作为添头的 `Kotlinx Serialization @Serializable` 在 SavedState 中的开箱即用支持，以及用户可选（需要用户实现接口）提供的自定义类型 Sedes（序列化反序列化）SavedState支持）。关于 Hiro Compose 的更多，建议查看[架构说明](docs/hiro-compose-arch.md)
+
 ## 已知问题、工程进展
 
 参见我的[待办项](docs/todo.md)。

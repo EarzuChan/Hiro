@@ -7,6 +7,8 @@ import android.util.Log
 import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.savedstate.SavedStateRegistryOwner
 import me.earzuchan.hiro.compose.internal.glue.HiroSavableStateBundleCodec
+import me.earzuchan.hiro.compose.internal.glue.HiroSavableStateConfigurationOwner
+import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 
 private const val TAG = "HiroDisposableSavableStateRegistry"
 
@@ -15,13 +17,16 @@ internal fun DisposableSaveableStateRegistry(id: String, savedStateRegistryOwner
     val key = "SavableStateRegistry:$id"
 
     val androidxRegistry = savedStateRegistryOwner.savedStateRegistry
+    val configuration = (savedStateRegistryOwner as? HiroSavableStateConfigurationOwner)?.hiroSavableStateConfiguration ?: HiroSavableStateConfiguration.DEFAULT
+    val classLoader = checkNotNull(savedStateRegistryOwner.javaClass.classLoader) { "Hiro SavableState Owner 没有可用的 ClassLoader" }
+    val codec = HiroSavableStateBundleCodec(configuration, classLoader)
     val bundle = androidxRegistry.consumeRestoredStateForKey(key)
-    val restored = bundle?.let(HiroSavableStateBundleCodec::decodeRegistry)
+    val restored = bundle?.let(codec::decodeRegistry)
 
-    val savableStateRegistry = SaveableStateRegistry(restored, HiroSavableStateBundleCodec::canBeSaved) // CanBeSave这一块
+    val savableStateRegistry = SaveableStateRegistry(restored, codec::canBeSaved)
 
     val registered = if (androidxRegistry.getSavedStateProvider(key) != null) false else try {
-        androidxRegistry.registerSavedStateProvider(key) { HiroSavableStateBundleCodec.encodeRegistry(savableStateRegistry.performSave()) }
+        androidxRegistry.registerSavedStateProvider(key) { codec.encodeRegistry(savableStateRegistry.performSave()) }
         true
     } catch (_: IllegalArgumentException) {
         Log.d(TAG, "保存状态提供者注册冲突：$key。TODO：多个 Compose 容器使用相同可保存ID名时，我方应提供稳定且可诊断的实例隔离策略")

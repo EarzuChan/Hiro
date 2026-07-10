@@ -12,13 +12,15 @@ import androidx.compose.ui.platform.PlatformWindowInsets
 import androidx.lifecycle.Lifecycle
 import me.earzuchan.hiro.compose.internal.architecture.HiroArchitectureComponentsOwner
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
+import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 
 @OptIn(InternalComposeUiApi::class)
-internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWindowInsets, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport) : PlatformContext.Empty(), AutoCloseable {
+internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWindowInsets, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration) : PlatformContext.Empty(), AutoCloseable {
     private val hiroArchitectureComponentsOwner = HiroArchitectureComponentsOwner(
         restoredState = savedStateTransport.consumeRestoredState(),
         publishSavedState = savedStateTransport::publishSavedState,
         requestNavigationBackHandling = requestNavigationBackHandling,
+        hiroSavableStateConfiguration = savableStateConfiguration,
     )
 
     private val hiroInputModeManager = HiroAndroidInputModeManager(requestInputMode)

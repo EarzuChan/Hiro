@@ -201,6 +201,7 @@ dependencies {
     api("androidx.navigationevent:navigationevent-compose:1.1.2", dependencyConfiguration = excludePwnedAndJvm)
     api("androidx.annotation:annotation-jvm:1.10.0")
     api("androidx.collection:collection-jvm:1.6.0")
+    api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3")
     runtimeOnly("org.jetbrains.kotlinx:atomicfu-jvm:0.28.0")
 
     // 基础状态类型由 Android 与 Hiro 共用，不属于 Hiro 接管模块
