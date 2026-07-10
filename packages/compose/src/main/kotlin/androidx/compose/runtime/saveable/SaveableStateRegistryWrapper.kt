@@ -29,13 +29,12 @@ internal class SaveableStateRegistryWrapper(base: SaveableStateRegistry) : Savea
 
         registerProvider(key = PROVIDER_KEY) {
             val controller = _controller
+            
             if (controller != null) {
                 val result = savedState()
                 controller.performSave(outBundle = result)
                 if (result.read { isEmpty() }) null else result
-            } else {
-                null
-            }
+            } else null
         }
     }
 }
