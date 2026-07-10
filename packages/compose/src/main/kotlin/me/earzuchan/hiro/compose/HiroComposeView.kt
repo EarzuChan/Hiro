@@ -13,8 +13,11 @@ import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.lifecycle.Lifecycle
 import me.earzuchan.hiro.compose.internal.HiroComposeEnvironment
 import me.earzuchan.hiro.compose.internal.HiroComposeRenderController
+import me.earzuchan.hiro.compose.internal.architecture.HiroAndroidHostBridge
+import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputModeFiddler
 import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputRouter
 import me.earzuchan.hiro.compose.internal.input.HiroComposeInputSink
@@ -28,7 +31,19 @@ class HiroComposeView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
     private val layer = HiroSkiaLayer()
-    private val renderController = HiroComposeRenderController(layer, currentEnvironment(), ::requestInputModeFromRenderThread)
+    private val savedStateTransport = HiroSavedStateTransport()
+    private val renderController = HiroComposeRenderController(
+        layer = layer,
+        initialEnvironment = currentEnvironment(),
+        requestInputMode = ::requestInputModeFromRenderThread,
+        requestNavigationBackHandling = ::requestNavigationBackHandlingFromRenderThread,
+        savedStateTransport = savedStateTransport,
+    )
+    private val hostBridge = HiroAndroidHostBridge(
+        savedStateTransport = savedStateTransport,
+        onLifecycleChanged = ::synchronizeRenderLifecycle,
+        onNavigationBack = renderController::dispatchNavigationBack,
+    )
     private val windowInsetsReader = HiroWindowInsetsFiddlerForAndroid(renderController::updateWindowInsets)
     private val inputModeReader = HiroAndroidInputModeFiddler(renderController::updateInputMode)
     private val inputRouter = HiroAndroidInputRouter(object : HiroComposeInputSink {
@@ -49,6 +64,8 @@ class HiroComposeView @JvmOverloads constructor(
     }
 
     init {
+        if (id == NO_ID) id = R.id.hiro_compose_view
+
         layoutParams = ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
         isFocusable = true
         isFocusableInTouchMode = true
@@ -71,6 +88,7 @@ class HiroComposeView @JvmOverloads constructor(
         checkMainThread()
         if (closed) return
 
+        hostBridge.attach(this)
         renderController.updateEnvironment(currentEnvironment())
         windowInsetsReader.attach(this)
         inputModeReader.attach(this)
@@ -133,8 +151,13 @@ class HiroComposeView @JvmOverloads constructor(
         windowInsetsReader.close()
         inputModeReader.close()
         renderController.beginClose()
-        if (layer.surfaceView == null) renderController.closeBeforeRenderThreadStarts() else layer.close()
-        renderActive = null
+
+        try {
+            if (layer.surfaceView == null) renderController.closeBeforeRenderThreadStarts() else layer.close()
+        } finally {
+            hostBridge.close()
+            renderActive = null
+        }
 
         Log.d(TAG, "已完整关闭")
     }
@@ -143,7 +166,21 @@ class HiroComposeView @JvmOverloads constructor(
         checkMainThread()
         if (closed || layer.surfaceView == null) return
 
-        val shouldRun = isAttachedToWindow && windowVisibility == VISIBLE && isShown
+        val hostState = hostBridge.lifecycleState
+        if (hostState == Lifecycle.State.DESTROYED) {
+            close()
+            return
+        }
+
+        val viewActive = isAttachedToWindow && windowVisibility == VISIBLE && isShown
+        val targetState = when {
+            hostState == Lifecycle.State.RESUMED && viewActive -> Lifecycle.State.RESUMED
+            hostState.isAtLeast(Lifecycle.State.STARTED) -> Lifecycle.State.STARTED
+            else -> Lifecycle.State.CREATED
+        }
+        renderController.updateLifecycle(targetState)
+
+        val shouldRun = targetState == Lifecycle.State.RESUMED
         if (!force && renderActive == shouldRun) return
         renderActive = shouldRun
 
@@ -153,6 +190,9 @@ class HiroComposeView @JvmOverloads constructor(
 
     private fun requestInputModeFromRenderThread(inputMode: InputMode): Boolean = if (closed) false
     else post { if (!closed) inputModeReader.request(inputMode) }
+
+    private fun requestNavigationBackHandlingFromRenderThread(enabled: Boolean): Boolean = if (closed) false
+    else post { if (!closed) hostBridge.updateNavigationBackHandling(enabled) }
 
     private fun currentEnvironment() = HiroComposeEnvironment(
         density = Density(resources.displayMetrics.density, resources.configuration.fontScale),

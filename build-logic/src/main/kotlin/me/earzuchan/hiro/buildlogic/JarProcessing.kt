@@ -51,7 +51,7 @@ abstract class HiroJarProcessTask : DefaultTask() {
     fun run() {
         val output = outputJar.get().asFile
 
-        logger.lifecycle("开始为${project}处理${output.name}")
+        logger.lifecycle("开始处理${output.name}")
 
         BlackMambaElbowing.mergeArchives(inputArtifacts.files, output, HiroBlackMambaProcessRule(dropPathPrefixes.get(), dropPathFragments.get(), dropBinaryPatterns.get()))
 

@@ -31,7 +31,7 @@ val composeJar = processToHiroJar("compose") {
 
     // 处理
 
-    dropPathPrefix("androidx/compose/ui/awt/")
+    dropPathPrefix("androidx/compose/ui/awt/", "androidx/compose/runtime/saveable/serialization/SerializableSaverKt")
 
     dropPathFragment(
         "Awt",
@@ -93,33 +93,53 @@ val composeJar = processToHiroJar("compose") {
         "androidx/compose/ui/platform/PlatformUriHandler_desktopKt.class",
         "androidx/compose/ui/platform/DesktopUriHandler",
         "androidx/compose/ui/text/intl/DesktopPlatformLocale",
-        "androidx/compose/ui/platform/DisposableSaveableStateRegistry"
+        "androidx/compose/ui/platform/DisposableSaveableStateRegistry",
+        "androidx/compose/runtime/saveable/serialization/SerializableSaverKt"
     )
 }
 
 val architectureComposeAdaptersJar = processToHiroJar("architecture-compose-adapters") {
     // 适配层保留原包名和 API，由 Hiro 统一提供；基础状态类型仍使用 Android 官方实现
+
     artifacts(
         "androidx.lifecycle:lifecycle-runtime-compose-desktop:2.10.0",
         "androidx.lifecycle:lifecycle-viewmodel-compose-android:2.10.0",
+        "androidx.lifecycle:lifecycle-viewmodel-navigation3-android:2.10.0",
         "androidx.savedstate:savedstate-compose-desktop:1.4.0"
     )
 
-    // FUCK：这他妈的是写错了吧，这都是纯校验，无处理。处理在哪了我Chovy，处理给我处理好了呀
+    // 处理
+
+    dropPathPrefix(
+        "androidx/lifecycle/compose/FlowExtKt",
+        "androidx/lifecycle/compose/ComposeLifecycleOwner.class",
+        "androidx/lifecycle/viewmodel/compose/LocalViewModelStoreOwner_androidKt.class",
+        "androidx/lifecycle/viewmodel/navigation3/ViewModelStoreNavEntryDecoratorDefaults.class"
+    )
+
+    dropBinaryPattern("androidx/activity/compose/LocalActivity")
+
+    // 校验
 
     requireJarEntry(
         "androidx/lifecycle/compose/LocalLifecycleOwnerKt.class",
         "androidx/lifecycle/compose/RememberLifecycleOwnerKt.class",
         "androidx/lifecycle/viewmodel/compose/LocalViewModelStoreOwner.class",
         "androidx/lifecycle/viewmodel/compose/ViewModelKt.class",
+        "androidx/lifecycle/viewmodel/navigation3/ViewModelStoreNavEntryDecorator.class",
         "androidx/savedstate/compose/LocalSavedStateRegistryOwnerKt.class",
         "META-INF/lifecycle-runtime-compose.kotlin_module",
         "META-INF/lifecycle-viewmodel-compose.kotlin_module",
+        "META-INF/lifecycle-viewmodel-navigation3.kotlin_module",
         "META-INF/savedstate-compose.kotlin_module"
     )
 
     forbidJarEntryFragment(
         "androidx/compose/runtime/Composer.class",
+        "androidx/lifecycle/compose/FlowExtKt",
+        "androidx/lifecycle/compose/ComposeLifecycleOwner.class",
+        "androidx/lifecycle/viewmodel/compose/LocalViewModelStoreOwner_androidKt.class",
+        "androidx/lifecycle/viewmodel/navigation3/ViewModelStoreNavEntryDecoratorDefaults.class",
         "androidx/lifecycle/Lifecycle.class",
         "androidx/lifecycle/ViewModel.class",
         "androidx/lifecycle/ViewModelStore.class",
@@ -154,6 +174,7 @@ val excludePwned = Action<ExternalModuleDependency>  {
 
     exclude(group = "androidx.lifecycle", module = "lifecycle-runtime-compose")
     exclude(group = "androidx.lifecycle", module = "lifecycle-viewmodel-compose")
+    exclude(group = "androidx.lifecycle", module = "lifecycle-viewmodel-navigation3")
 
     exclude(group = "androidx.savedstate", module = "savedstate-compose")
 }
@@ -169,6 +190,7 @@ dependencies {
     api(project(":skia"))
 
     implementation(libs.androidx.core)
+    implementation("androidx.activity:activity:1.12.4", dependencyConfiguration = excludePwned)
 
     // CMP 相关依赖，经处理进Jar。坐标和版本基本跟随上游 CMP 所使用的来
     api(composeJar.files)
@@ -179,7 +201,7 @@ dependencies {
     api("androidx.navigationevent:navigationevent-compose:1.1.2", dependencyConfiguration = excludePwnedAndJvm)
     api("androidx.annotation:annotation-jvm:1.10.0")
     api("androidx.collection:collection-jvm:1.6.0")
-    runtimeOnly("org.jetbrains.kotlinx:atomicfu-jvm:0.28.0") // 有被CMP所依赖
+    runtimeOnly("org.jetbrains.kotlinx:atomicfu-jvm:0.28.0")
 
     // 基础状态类型由 Android 与 Hiro 共用，不属于 Hiro 接管模块
     api("androidx.savedstate:savedstate:1.4.0", dependencyConfiguration = excludePwned)

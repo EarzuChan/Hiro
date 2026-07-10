@@ -5,7 +5,9 @@ import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.lifecycle.Lifecycle
 import me.earzuchan.hiro.compose.HiroSkiaComposeScene
+import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroPlatformWindowInsetsSnapshot
 import me.earzuchan.hiro.skia.HiroSkiaLayer
@@ -18,7 +20,13 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal data class HiroComposeEnvironment(val density: Density, val layoutDirection: LayoutDirection, val systemTheme: SystemTheme)
 
-internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, initialEnvironment: HiroComposeEnvironment, private val requestInputMode: (InputMode) -> Boolean) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate {
+internal class HiroComposeRenderController(
+    private val layer: HiroSkiaLayer,
+    initialEnvironment: HiroComposeEnvironment,
+    private val requestInputMode: (InputMode) -> Boolean,
+    private val requestNavigationBackHandling: (Boolean) -> Boolean,
+    private val savedStateTransport: HiroSavedStateTransport,
+) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate {
     private val commands = ConcurrentLinkedQueue<HiroComposeCommand>()
     private val drainScheduled = AtomicBoolean(false)
     private val state = AtomicReference(HiroComposeRenderState.WaitingForRenderThread)
@@ -48,9 +56,13 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
         return post(HiroComposeCommand.ApplyInputMode)
     }
 
+    fun updateLifecycle(state: Lifecycle.State): Boolean = post(HiroComposeCommand.MoveLifecycle(state))
+
     fun sendPointerEvent(event: HiroComposePointerEvent): Boolean = post(HiroComposeCommand.PointerEvent(event))
 
     fun cancelPointerInput() = post(HiroComposeCommand.CancelPointerInput)
+
+    fun dispatchNavigationBack(): Boolean = post(HiroComposeCommand.NavigationBack)
 
     fun wake() {
         signalDrain()
@@ -63,7 +75,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
         if (!state.get().acceptsCommands) return
         drainCommands()
         if (!state.get().acceptsCommands) return
-        ensureScene().onHostResume()
+        ensureScene()
     }
 
     fun onHostPauseOnRenderThread() {
@@ -72,7 +84,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
         if (!state.get().acceptsCommands) return
         drainCommands()
         if (!state.get().acceptsCommands) return
-        scene?.onHostPause()
+        scene?.checkpointSavedState()
     }
 
     fun beginClose() {
@@ -157,7 +169,9 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
             HiroComposeCommand.ApplyWindowInsets -> latestWindowInsets.get()?.let(ensureScene()::updateWindowInsets)
             HiroComposeCommand.ApplyInputMode -> latestInputMode.get()?.let(ensureScene()::updateInputMode)
             is HiroComposeCommand.PointerEvent -> ensureScene().sendPointerEvent(command.event)
+            is HiroComposeCommand.MoveLifecycle -> ensureScene().moveLifecycleTo(command.state)
             HiroComposeCommand.CancelPointerInput -> scene?.cancelPointerInput()
+            HiroComposeCommand.NavigationBack -> scene?.dispatchNavigationBack()
         }
 
         if (!state.get().acceptsCommands) commands.clear() else if (commands.isNotEmpty()) signalDrain()
@@ -179,6 +193,8 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
                 dispatcher = dispatcher,
                 initialEnvironment = latestEnvironment.get(),
                 requestInputMode = requestInputMode,
+                requestNavigationBackHandling = requestNavigationBackHandling,
+                savedStateTransport = savedStateTransport,
             ).also { nextScene ->
                 createdScene = nextScene
                 latestWindowInsets.get()?.let(nextScene::updateWindowInsets)
@@ -213,5 +229,7 @@ private sealed interface HiroComposeCommand {
     data object ApplyWindowInsets : HiroComposeCommand
     data object ApplyInputMode : HiroComposeCommand
     data class PointerEvent(val event: HiroComposePointerEvent) : HiroComposeCommand
+    data class MoveLifecycle(val state: Lifecycle.State) : HiroComposeCommand
     data object CancelPointerInput : HiroComposeCommand
+    data object NavigationBack : HiroComposeCommand
 }
