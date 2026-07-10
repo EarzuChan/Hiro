@@ -2,7 +2,7 @@ package me.earzuchan.hiro.buildlogic
 
 object HiroBuildConfig {
     const val namespace = "me.earzuchan.hiro"
-    const val version = "1.3.0-alpha-cmp1.11.1"
+    const val version = "1.4.0-alpha-cmp1.11.1"
     const val androidCompileSdk = 36
     const val androidMinSdk = 24
 }
