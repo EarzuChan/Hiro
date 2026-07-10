@@ -1,4 +1,4 @@
-package me.earzuchan.hiro.example.architecture
+package me.earzuchan.hiro.example.architecture.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
@@ -7,7 +7,9 @@ import java.util.UUID
 
 class ArchitectureViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
     val instanceId: String = UUID.randomUUID().toString().take(8)
+
     val creationThread: String = Thread.currentThread().name
+
     val count = savedStateHandle.getStateFlow(COUNT_KEY, 0)
 
     init {

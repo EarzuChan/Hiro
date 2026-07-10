@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import me.earzuchan.hiro.compose.setHiroComposeContent
+import me.earzuchan.hiro.example.architecture.viewmodel.ArchitectureViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.util.concurrent.atomic.AtomicBoolean
 

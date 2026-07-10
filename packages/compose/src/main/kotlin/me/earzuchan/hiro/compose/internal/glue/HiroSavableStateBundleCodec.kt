@@ -1,4 +1,4 @@
-package me.earzuchan.hiro.compose.glue
+package me.earzuchan.hiro.compose.internal.glue
 
 import android.os.Binder
 import android.os.Bundle

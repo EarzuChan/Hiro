@@ -19,7 +19,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.savedstate.compose.LocalSavedStateRegistryOwner
-import me.earzuchan.hiro.compose.internal.HiroAndroidPlatformContext
+import me.earzuchan.hiro.compose.internal.HiroGoldenMambaContext
 import me.earzuchan.hiro.compose.internal.HiroComposeEnvironment
 import me.earzuchan.hiro.compose.internal.HiroSkiaRenderDispatcher
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
@@ -34,7 +34,7 @@ class HiroSkiaComposeScene internal constructor(private val scheduleFrame: () ->
 
     private val windowInsets = HiroMutablePlatformWindowInsets()
 
-    private val platformContext = HiroAndroidPlatformContext(hiroWindowInsets = windowInsets as PlatformWindowInsets, requestInputMode = requestInputMode, requestNavigationBackHandling = requestNavigationBackHandling, savedStateTransport = savedStateTransport)
+    private val platformContext = HiroGoldenMambaContext(hiroWindowInsets = windowInsets as PlatformWindowInsets, requestInputMode = requestInputMode, requestNavigationBackHandling = requestNavigationBackHandling, savedStateTransport = savedStateTransport)
 
     private val lifecycleOwner = checkNotNull(platformContext.architectureComponentsOwner.lifecycleOwner) { "Hiro Compose 没有可用的 LifecycleOwner" }
 

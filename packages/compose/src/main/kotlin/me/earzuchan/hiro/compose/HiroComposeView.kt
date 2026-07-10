@@ -191,6 +191,7 @@ class HiroComposeView @JvmOverloads constructor(
     private fun requestInputModeFromRenderThread(inputMode: InputMode): Boolean = if (closed) false
     else post { if (!closed) inputModeReader.request(inputMode) }
 
+    // TIPS：这里是最神秘的“申请NavBack”
     private fun requestNavigationBackHandlingFromRenderThread(enabled: Boolean): Boolean = if (closed) false
     else post { if (!closed) hostBridge.updateNavigationBackHandling(enabled) }
 
