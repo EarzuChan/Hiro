@@ -14,28 +14,36 @@ import androidx.compose.ui.platform.PlatformWindowInsets
 import androidx.compose.ui.scene.CanvasLayersComposeScene
 import androidx.compose.ui.scene.ComposeScene
 import androidx.compose.ui.unit.IntSize
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.savedstate.compose.LocalSavedStateRegistryOwner
 import me.earzuchan.hiro.compose.internal.HiroAndroidPlatformContext
 import me.earzuchan.hiro.compose.internal.HiroComposeEnvironment
 import me.earzuchan.hiro.compose.internal.HiroSkiaRenderDispatcher
+import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroMutablePlatformWindowInsets
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroPlatformWindowInsetsSnapshot
 import org.jetbrains.skia.Canvas as SkiaCanvas
 
 @OptIn(InternalComposeUiApi::class)
-class HiroSkiaComposeScene internal constructor(
-    private val scheduleFrame: () -> Unit,
-    private val dispatcher: HiroSkiaRenderDispatcher,
-    initialEnvironment: HiroComposeEnvironment,
-    private val requestInputMode: (InputMode) -> Boolean,
-) : AutoCloseable {
+class HiroSkiaComposeScene internal constructor(private val scheduleFrame: () -> Unit, private val dispatcher: HiroSkiaRenderDispatcher, initialEnvironment: HiroComposeEnvironment, private val requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport) : AutoCloseable {
     private val systemTheme = mutableStateOf(initialEnvironment.systemTheme)
+
     private val windowInsets = HiroMutablePlatformWindowInsets()
-    private val platformContext = HiroAndroidPlatformContext(windowInsets as PlatformWindowInsets, requestInputMode)
+
+    private val platformContext = HiroAndroidPlatformContext(hiroWindowInsets = windowInsets as PlatformWindowInsets, requestInputMode = requestInputMode, requestNavigationBackHandling = requestNavigationBackHandling, savedStateTransport = savedStateTransport)
+
+    private val lifecycleOwner = checkNotNull(platformContext.architectureComponentsOwner.lifecycleOwner) { "Hiro Compose 没有可用的 LifecycleOwner" }
+
     private val viewModelStoreOwner = checkNotNull(platformContext.architectureComponentsOwner.viewModelStoreOwner) { "Hiro Compose 没有可用的 ViewModelStoreOwner" }
+
     private val navigationEventDispatcherOwner = platformContext.architectureComponentsOwner.navigationEventDispatcherOwner
+
+    private val savedStateRegistryOwner = checkNotNull(platformContext.architectureComponentsOwner.savedStateRegistryOwner) { "Hiro Compose 没有可用的 SavedStateRegistryOwner" }
+
     private val scene: ComposeScene = CanvasLayersComposeScene(
         density = initialEnvironment.density,
         layoutDirection = initialEnvironment.layoutDirection,
@@ -63,8 +71,10 @@ class HiroSkiaComposeScene internal constructor(
         scene.setContent {
             CompositionLocalProvider(
                 LocalSystemTheme provides systemTheme.value,
+                LocalLifecycleOwner provides lifecycleOwner,
                 LocalViewModelStoreOwner provides viewModelStoreOwner,
                 LocalNavigationEventDispatcherOwner provides navigationEventDispatcherOwner,
+                LocalSavedStateRegistryOwner provides savedStateRegistryOwner,
             ) { content() }
         }
 
@@ -94,17 +104,24 @@ class HiroSkiaComposeScene internal constructor(
         scheduleFrame()
     }
 
-    internal fun onHostResume() {
+    internal fun moveLifecycleTo(state: Lifecycle.State) {
         checkUsable()
 
-        platformContext.onHostResume()
+        platformContext.moveLifecycleTo(state)
         scheduleFrame()
     }
 
-    internal fun onHostPause() {
+    internal fun checkpointSavedState() {
         checkUsable()
 
-        platformContext.onHostPause()
+        platformContext.checkpointSavedState()
+    }
+
+    internal fun dispatchNavigationBack() {
+        checkUsable()
+
+        platformContext.dispatchNavigationBack()
+        scheduleFrame()
     }
 
     internal fun sendPointerEvent(event: HiroComposePointerEvent): Boolean {

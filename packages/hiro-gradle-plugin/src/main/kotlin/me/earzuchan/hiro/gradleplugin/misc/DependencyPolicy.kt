@@ -9,8 +9,10 @@ internal object HiroDependencyPolicy {
     private const val JETBRAINS_GROUP = "org.jetbrains"
 
     private val architectureComposeModuleFamilies = mapOf(
-        "$ANDROIDX_GROUP.lifecycle" to setOf("lifecycle-runtime-compose", "lifecycle-viewmodel-compose"),
-        "$ANDROIDX_GROUP.savedstate" to setOf("savedstate-compose")
+        "$ANDROIDX_GROUP.lifecycle" to setOf("lifecycle-runtime-compose", "lifecycle-viewmodel-compose", "lifecycle-viewmodel-navigation3"),
+        "$ANDROIDX_GROUP.savedstate" to setOf("savedstate-compose"),
+        "$JETBRAINS_GROUP.androidx.lifecycle" to setOf("lifecycle-runtime-compose", "lifecycle-viewmodel-compose", "lifecycle-viewmodel-navigation3"),
+        "$JETBRAINS_GROUP.androidx.savedstate" to setOf("savedstate-compose")
     )
 
     fun isComposeModule(group: String) = group == "$ANDROIDX_GROUP.compose" || group.startsWith("$ANDROIDX_GROUP.compose.") || group == "$JETBRAINS_GROUP.compose" || group.startsWith("$JETBRAINS_GROUP.compose.")

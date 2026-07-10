@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:glEsVersion="0x00030000" android:required="true"/>
 
-    <application android:label="Hiro Material 3" android:theme="@style/HiroMaterial3ExampleTheme">
-        <activity android:name=".MambaActivity" android:exported="true">
+    <application android:name=".ArchitectureExampleApplication" android:label="Hiro Architecture" android:theme="@style/HiroArchitectureExampleTheme">
+        <activity android:name=".ArchitectureActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
