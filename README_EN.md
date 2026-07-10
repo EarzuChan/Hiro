@@ -1,6 +1,6 @@
 # Hiro
 
-![Version](https://img.shields.io/badge/Version-1.2.5--alpha--cmp1.11.1-red?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.3.0--alpha--cmp1.11.1-red?style=flat-square)
 [![Maven](https://img.shields.io/badge/Maven-EarzuChan-blue?style=flat-square)](https://earzuchan.github.io/maven/)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/license/MIT)
 
