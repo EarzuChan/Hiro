@@ -26,15 +26,16 @@ import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroMutablePlatformWindowInsets
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroPlatformWindowInsetsSnapshot
+import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 import org.jetbrains.skia.Canvas as SkiaCanvas
 
 @OptIn(InternalComposeUiApi::class)
-class HiroSkiaComposeScene internal constructor(private val scheduleFrame: () -> Unit, private val dispatcher: HiroSkiaRenderDispatcher, initialEnvironment: HiroComposeEnvironment, private val requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport) : AutoCloseable {
+class HiroSkiaComposeScene internal constructor(private val scheduleFrame: () -> Unit, private val dispatcher: HiroSkiaRenderDispatcher, initialEnvironment: HiroComposeEnvironment, private val requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration) : AutoCloseable {
     private val systemTheme = mutableStateOf(initialEnvironment.systemTheme)
 
     private val windowInsets = HiroMutablePlatformWindowInsets()
 
-    private val platformContext = HiroGoldenMambaContext(hiroWindowInsets = windowInsets as PlatformWindowInsets, requestInputMode = requestInputMode, requestNavigationBackHandling = requestNavigationBackHandling, savedStateTransport = savedStateTransport)
+    private val platformContext = HiroGoldenMambaContext(hiroWindowInsets = windowInsets as PlatformWindowInsets, requestInputMode = requestInputMode, requestNavigationBackHandling = requestNavigationBackHandling, savedStateTransport = savedStateTransport, savableStateConfiguration = savableStateConfiguration)
 
     private val lifecycleOwner = checkNotNull(platformContext.architectureComponentsOwner.lifecycleOwner) { "Hiro Compose 没有可用的 LifecycleOwner" }
 

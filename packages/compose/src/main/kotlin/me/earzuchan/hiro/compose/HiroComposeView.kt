@@ -23,13 +23,10 @@ import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputRouter
 import me.earzuchan.hiro.compose.internal.input.HiroComposeInputSink
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroWindowInsetsFiddlerForAndroid
+import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 import me.earzuchan.hiro.skia.HiroSkiaLayer
 
-class HiroComposeView @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0,
-) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
+class HiroComposeView private constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int, savableStateConfiguration: HiroSavableStateConfiguration) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
     private val layer = HiroSkiaLayer()
     private val savedStateTransport = HiroSavedStateTransport()
     private val renderController = HiroComposeRenderController(
@@ -38,6 +35,7 @@ class HiroComposeView @JvmOverloads constructor(
         requestInputMode = ::requestInputModeFromRenderThread,
         requestNavigationBackHandling = ::requestNavigationBackHandlingFromRenderThread,
         savedStateTransport = savedStateTransport,
+        savableStateConfiguration = savableStateConfiguration,
     )
     private val hostBridge = HiroAndroidHostBridge(
         savedStateTransport = savedStateTransport,
@@ -62,6 +60,15 @@ class HiroComposeView @JvmOverloads constructor(
     companion object {
         private const val TAG = "HiroComposeView"
     }
+
+    @JvmOverloads
+    constructor(
+        context: Context,
+        attrs: AttributeSet? = null,
+        defStyleAttr: Int = 0,
+    ) : this(context, attrs, defStyleAttr, HiroSavableStateConfiguration.DEFAULT)
+
+    constructor(context: Context, savableStateConfiguration: HiroSavableStateConfiguration) : this(context, null, 0, savableStateConfiguration)
 
     init {
         if (id == NO_ID) id = R.id.hiro_compose_view

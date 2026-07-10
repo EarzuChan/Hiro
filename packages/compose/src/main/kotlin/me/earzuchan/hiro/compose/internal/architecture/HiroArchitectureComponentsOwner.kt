@@ -20,9 +20,11 @@ import androidx.navigationevent.NavigationEventDispatcherOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
+import me.earzuchan.hiro.compose.internal.glue.HiroSavableStateConfigurationOwner
+import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 
 @OptIn(InternalComposeUiApi::class)
-internal class HiroArchitectureComponentsOwner(restoredState: Bundle?, private val publishSavedState: (Bundle) -> Unit, requestNavigationBackHandling: (Boolean) -> Boolean) : PlatformArchitectureComponentsOwner, LifecycleOwner, ViewModelStoreOwner, HasDefaultViewModelProviderFactory, NavigationEventDispatcherOwner, SavedStateRegistryOwner, AutoCloseable {
+internal class HiroArchitectureComponentsOwner(restoredState: Bundle?, private val publishSavedState: (Bundle) -> Unit, requestNavigationBackHandling: (Boolean) -> Boolean, override val hiroSavableStateConfiguration: HiroSavableStateConfiguration) : PlatformArchitectureComponentsOwner, LifecycleOwner, ViewModelStoreOwner, HasDefaultViewModelProviderFactory, NavigationEventDispatcherOwner, SavedStateRegistryOwner, HiroSavableStateConfigurationOwner, AutoCloseable {
     private val ownerThread = Thread.currentThread()
 
     private var closed = false

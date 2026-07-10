@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -20,6 +21,9 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.compose.LocalSavedStateRegistryOwner
 import me.earzuchan.hiro.example.architecture.navigation.Detail
 import me.earzuchan.hiro.example.architecture.navigation.Home
+import me.earzuchan.hiro.example.architecture.savable.AutomaticSavableKey
+import me.earzuchan.hiro.example.architecture.savable.AutomaticSavableObjectKey
+import me.earzuchan.hiro.example.architecture.savable.ThirdPartySavableKey
 import me.earzuchan.hiro.example.architecture.ui.ActionButton
 import me.earzuchan.hiro.example.architecture.ui.ArchitecturePage
 import me.earzuchan.hiro.example.architecture.ui.StatusText
@@ -44,10 +48,7 @@ internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActi
 
     LaunchedEffect(rootViewModel) {
         check(Thread.currentThread().name != "main") { "Hiro Compose 根内容错误地运行在 Android 主线程" }
-        Log.i(
-            ArchitectureViewModel.TAG,
-            "HIRO_ROOT vm=${rootViewModel.instanceId} thread=${Thread.currentThread().name} store=${System.identityHashCode(rootStoreOwner)} savedState=${System.identityHashCode(rootSavedStateOwner)}",
-        )
+        Log.i(ArchitectureViewModel.TAG, "HIRO_ROOT vm=${rootViewModel.instanceId} thread=${Thread.currentThread().name} store=${System.identityHashCode(rootStoreOwner)} savedState=${System.identityHashCode(rootSavedStateOwner)}")
     }
 
     DisposableEffect(rootLifecycleOwner) {
@@ -68,6 +69,8 @@ internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActi
         }
 
         ActionButton("重建 Activity 验证恢复", "重建 Activity", onRecreateActivity)
+
+        SavableStateChecks()
 
         NavDisplay(
             backStack = backStack,
@@ -96,5 +99,32 @@ internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActi
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun SavableStateChecks() {
+    val automaticObjectHolder = rememberSaveableStateHolder()
+    val automaticHolder = rememberSaveableStateHolder()
+    val thirdPartyHolder = rememberSaveableStateHolder()
+
+    automaticObjectHolder.SaveableStateProvider(AutomaticSavableObjectKey) {
+        automaticHolder.SaveableStateProvider(AutomaticSavableKey("architecture-example")) {
+            var automaticCount by rememberSaveable { mutableIntStateOf(0) }
+
+            thirdPartyHolder.SaveableStateProvider(ThirdPartySavableKey("architecture-example")) {
+                var thirdPartyCount by rememberSaveable { mutableIntStateOf(0) }
+
+                LaunchedEffect(automaticCount, thirdPartyCount) {
+                    Log.i(ArchitectureViewModel.TAG, "HIRO_SEDES automatic=$automaticCount thirdParty=$thirdPartyCount thread=${Thread.currentThread().name}")
+                }
+
+                StatusText("KtSer $automaticCount / 第三方 Codec $thirdPartyCount", Color(0xFFF0ABFC))
+                ActionButton("增加两类 SeDes 状态", "增加 SeDes 状态") {
+                    automaticCount++
+                    thirdPartyCount++
+                }
+            }
+        }
     }
 }
