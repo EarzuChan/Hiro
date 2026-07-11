@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.Lifecycle
 import me.earzuchan.hiro.compose.internal.HiroComposeEnvironment
@@ -133,6 +134,11 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         if (closed) return
         renderController.updateEnvironment(currentEnvironment())
         windowInsetsReader.requestApplyInsets()
+    }
+
+    override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
+        super.onSizeChanged(width, height, oldWidth, oldHeight)
+        if (!closed && width > 0 && height > 0) renderController.updateViewport(IntSize(width, height))
     }
 
     override fun onRtlPropertiesChanged(layoutDirection: Int) {
