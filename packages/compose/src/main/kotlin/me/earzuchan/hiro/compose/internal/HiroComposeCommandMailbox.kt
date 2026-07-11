@@ -10,17 +10,17 @@ internal class HiroComposeCommandMailbox {
     private val lock = Any()
     private val commands = ArrayDeque<HiroComposeCommand>()
 
-    fun add(command: HiroComposeCommand) {
+    fun add(current: HiroComposeCommand) {
         synchronized(lock) {
             val previous = commands.peekLast()
-            if (previous is HiroComposeCommand.PointerEvent && command is HiroComposeCommand.PointerEvent) {
-                previous.event.coalesceMoveWith(command.event)?.let { merged ->
-                    commands.removeLast()
-                    commands.addLast(HiroComposeCommand.PointerEvent(merged))
-                    return
-                }
+
+            if (previous is HiroComposeCommand.PointerEvent && current is HiroComposeCommand.PointerEvent) previous.event.coalesceMoveWith(current.event)?.let { merged ->
+                commands.removeLast()
+                commands.addLast(HiroComposeCommand.PointerEvent(merged))
+                return
             }
-            commands.addLast(command)
+
+            commands.addLast(current)
         }
     }
 
