@@ -29,7 +29,7 @@ android {
 
 dependencies {
     implementation(project(":compose"))
-    implementation(libs.androidx.core)
+    implementation(libs.androidx.activity)
 
     // 3rd deps
     implementation("io.github.kyant0:backdrop:2.0.0")

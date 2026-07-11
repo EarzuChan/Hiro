@@ -30,5 +30,5 @@ android {
 dependencies {
     implementation(project(":compose"))
     implementation(project(":material3"))
-    implementation(libs.androidx.core)
+    implementation(libs.androidx.activity)
 }

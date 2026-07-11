@@ -30,7 +30,7 @@ android {
 
 dependencies {
     implementation(project(":compose"))
-    implementation("androidx.activity:activity:1.12.4")
+    implementation(libs.androidx.activity)
     implementation("androidx.navigation3:navigation3-ui:1.1.1")
     implementation("io.insert-koin:koin-android:4.2.2") // 一夜一夜，这是特制的（允许在AndroidApp中开始Koin）
     implementation("io.insert-koin:koin-compose-viewmodel:4.2.2")
