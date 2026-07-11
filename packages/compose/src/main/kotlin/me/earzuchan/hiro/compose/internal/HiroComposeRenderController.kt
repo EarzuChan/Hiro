@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.Lifecycle
 import me.earzuchan.hiro.compose.HiroSkiaComposeScene
@@ -15,17 +16,17 @@ import me.earzuchan.hiro.skia.HiroSkiaLayer
 import me.earzuchan.hiro.skia.HiroSkiaRenderDelegate
 import me.earzuchan.hiro.skia.HiroSkiaRenderLifecycleDelegate
 import org.jetbrains.skia.Canvas
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 internal data class HiroComposeEnvironment(val density: Density, val layoutDirection: LayoutDirection, val systemTheme: SystemTheme)
 
 internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, initialEnvironment: HiroComposeEnvironment, private val requestInputMode: (InputMode) -> Boolean, private val requestNavigationBackHandling: (Boolean) -> Boolean, private val savedStateTransport: HiroSavedStateTransport, private val savableStateConfiguration: HiroSavableStateConfiguration) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate {
-    private val commands = ConcurrentLinkedQueue<HiroComposeCommand>()
+    private val commands = HiroComposeCommandMailbox()
     private val drainScheduled = AtomicBoolean(false)
     private val state = AtomicReference(HiroComposeRenderState.WaitingForRenderThread)
     private val latestEnvironment = AtomicReference(initialEnvironment)
+    private val latestViewport = AtomicReference<IntSize?>(null)
     private val latestWindowInsets = AtomicReference<HiroPlatformWindowInsetsSnapshot?>(null)
     private val latestInputMode = AtomicReference<InputMode?>(null)
     private val dispatcher = HiroSkiaRenderDispatcher(layer::isOnRenderThread, layer::postToRenderThread, layer::queueToRenderThread)
@@ -39,6 +40,11 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
     fun updateEnvironment(environment: HiroComposeEnvironment): Boolean {
         latestEnvironment.set(environment)
         return post(HiroComposeCommand.ApplyEnvironment)
+    }
+
+    fun updateViewport(size: IntSize): Boolean {
+        latestViewport.set(size)
+        return post(HiroComposeCommand.ApplyViewport)
     }
 
     fun updateWindowInsets(snapshot: HiroPlatformWindowInsetsSnapshot): Boolean {
@@ -68,6 +74,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
         checkRenderThread()
 
         if (!state.get().acceptsCommands) return
+        if (latestViewport.get() == null) return
         drainCommands()
         if (!state.get().acceptsCommands) return
         ensureScene()
@@ -103,6 +110,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
         checkRenderThread()
 
         if (terminated || state.get() == HiroComposeRenderState.Closing) return
+        latestViewport.set(IntSize(width, height))
         drainCommands()
         scene?.render(canvas, width, height, nanoTime)
     }
@@ -152,24 +160,39 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
     private fun drainCommands() {
         checkRenderThread()
 
-        drainScheduled.set(false)
         if (!state.get().acceptsCommands) {
             commands.clear()
+            drainScheduled.set(false)
+            return
+        }
+        
+        val viewport = latestViewport.get()
+        if (viewport == null) {
+            drainScheduled.set(false)
             return
         }
 
-        while (!terminated && state.get().acceptsCommands) when (val command = commands.poll() ?: break) {
-            is HiroComposeCommand.SetContent -> ensureScene().setContent(command.content)
-            HiroComposeCommand.ApplyEnvironment -> ensureScene().updateEnvironment(latestEnvironment.get())
-            HiroComposeCommand.ApplyWindowInsets -> latestWindowInsets.get()?.let(ensureScene()::updateWindowInsets)
-            HiroComposeCommand.ApplyInputMode -> latestInputMode.get()?.let(ensureScene()::updateInputMode)
-            is HiroComposeCommand.PointerEvent -> ensureScene().sendPointerEvent(command.event)
-            is HiroComposeCommand.MoveLifecycle -> ensureScene().moveLifecycleTo(command.state)
-            HiroComposeCommand.CancelPointerInput -> scene?.cancelPointerInput()
-            HiroComposeCommand.NavigationBack -> scene?.dispatchNavigationBack()
-        }
+        ensureScene().updateViewport(viewport)
+        val batch = commands.takeSnapshot()
+        try {
+            for (command in batch) {
+                if (terminated || !state.get().acceptsCommands) break
 
-        if (!state.get().acceptsCommands) commands.clear() else if (commands.isNotEmpty()) signalDrain()
+                when (command) {
+                    is HiroComposeCommand.SetContent -> ensureScene().setContent(command.content)
+                    HiroComposeCommand.ApplyEnvironment -> ensureScene().updateEnvironment(latestEnvironment.get())
+                    HiroComposeCommand.ApplyViewport -> latestViewport.get()?.let(ensureScene()::updateViewport)
+                    HiroComposeCommand.ApplyWindowInsets -> latestWindowInsets.get()?.let(ensureScene()::updateWindowInsets)
+                    HiroComposeCommand.ApplyInputMode -> latestInputMode.get()?.let(ensureScene()::updateInputMode)
+                    is HiroComposeCommand.PointerEvent -> ensureScene().sendPointerEvent(command.event)
+                    is HiroComposeCommand.MoveLifecycle -> ensureScene().moveLifecycleTo(command.state)
+                    HiroComposeCommand.CancelPointerInput -> scene?.cancelPointerInput()
+                    HiroComposeCommand.NavigationBack -> scene?.dispatchNavigationBack()
+                }
+            }
+        } finally {
+            drainScheduled.set(false)
+        }
     }
 
     private fun ensureScene(): HiroSkiaComposeScene {
@@ -217,15 +240,3 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
 }
 
 private enum class HiroComposeRenderState(val acceptsCommands: Boolean) { WaitingForRenderThread(true), Running(true), Closing(false), Closed(false) }
-
-// TODO：六六六还有命令模式。看看要不要优化掉
-private sealed interface HiroComposeCommand {
-    data class SetContent(val content: @Composable () -> Unit) : HiroComposeCommand
-    data object ApplyEnvironment : HiroComposeCommand
-    data object ApplyWindowInsets : HiroComposeCommand
-    data object ApplyInputMode : HiroComposeCommand
-    data class PointerEvent(val event: HiroComposePointerEvent) : HiroComposeCommand
-    data class MoveLifecycle(val state: Lifecycle.State) : HiroComposeCommand
-    data object CancelPointerInput : HiroComposeCommand
-    data object NavigationBack : HiroComposeCommand
-}

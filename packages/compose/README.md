@@ -4,3 +4,7 @@
 顶替冲突项目，补齐安卓体验（接入各种事件，并提供 HiroComposeView、HiroActivityExtension）。
 
 注：androidx.compose.ui.*/ 是我们所做的顶替工作。
+
+## 关于测试
+
+要小而精。以纸面（单元、冒烟、集成）测试为少，以 `Examples` 实机体验和 Debug 为真理。

@@ -85,10 +85,25 @@ class HiroSkiaComposeScene internal constructor(private val scheduleFrame: () ->
     internal fun updateEnvironment(environment: HiroComposeEnvironment) {
         checkUsable()
 
-        if (currentEnvironment.density != environment.density) scene.density = environment.density
+        if (currentEnvironment.density != environment.density) {
+            scene.density = environment.density
+            currentSize?.let { platformContext.updateWindowInfo(it, environment.density) }
+        }
         if (currentEnvironment.layoutDirection != environment.layoutDirection) scene.layoutDirection = environment.layoutDirection
         if (currentEnvironment.systemTheme != environment.systemTheme) systemTheme.value = environment.systemTheme
         currentEnvironment = environment
+        scheduleFrame()
+    }
+
+    internal fun updateViewport(size: IntSize) {
+        checkUsable()
+
+        platformContext.updateWindowInfo(size, currentEnvironment.density)
+        if (currentSize == size) return
+
+        currentSize = size
+        scene.size = size
+        Log.d(TAG, "渲染尺寸改变：${size.width}x${size.height}")
         scheduleFrame()
     }
 
@@ -161,13 +176,7 @@ class HiroSkiaComposeScene internal constructor(private val scheduleFrame: () ->
         checkUsable()
         check(width >= 0 && height >= 0) { "Compose Skia Android 渲染尺寸不能为负数" }
 
-        val nextSize = IntSize(width, height)
-        if (currentSize != nextSize) {
-            currentSize = nextSize
-            scene.size = nextSize
-            Log.d(TAG, "渲染尺寸改变：${nextSize.width}x${nextSize.height}")
-        }
-
+        updateViewport(IntSize(width, height))
         scene.render(canvas.asComposeCanvas(), nanoTime)
     }
 

@@ -209,6 +209,8 @@ dependencies {
     api("androidx.lifecycle:lifecycle-runtime:2.10.0", dependencyConfiguration = excludePwned)
     api("androidx.lifecycle:lifecycle-viewmodel:2.10.0", dependencyConfiguration = excludePwned)
     api("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.10.0", dependencyConfiguration = excludePwned)
+
+    testImplementation(kotlin("test-junit"))
 }
 
 publishing {
