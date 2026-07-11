@@ -1,9 +1,11 @@
 package me.earzuchan.hiro.example.compose
 
-import android.app.Activity
 import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -17,7 +19,6 @@ import androidx.compose.ui.graphics.asComposeShader
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.WindowCompat.enableEdgeToEdge
 import me.earzuchan.hiro.compose.setHiroComposeContent
 import org.jetbrains.skia.RuntimeEffect
 import org.jetbrains.skia.RuntimeShaderBuilder
@@ -25,15 +26,15 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-class MambaActivity : Activity() {
+class MambaActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        enableEdgeToEdge(window)
+        enableEdgeToEdge()
         setHiroComposeContent {
             val transition = rememberInfiniteTransition(label = "loop-anime")
 
-            val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(2400, easing = LinearEasing,), RepeatMode.Restart), "光斑相位")
+            val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(2400, easing = LinearEasing), RepeatMode.Restart), "光斑相位")
 
             Box(Modifier.fillMaxSize()) {
                 SkSlBackground(phase)
@@ -50,9 +51,9 @@ class MambaActivity : Activity() {
                     drawCircle(Color.White, side * 0.035f, Offset(size.width * 0.5f, size.height * 0.5f), 0.72f)
                 }
 
-                Column(Modifier.fillMaxSize().padding(28.dp), Arrangement.Bottom) {
+                Column(Modifier.fillMaxSize().safeContentPadding().border(1.dp, Color.Red).padding(28.dp), Arrangement.Bottom) {
                     BasicText("Hiro Compose Showcase", style = TextStyle(Color.White, 34.sp))
-                    BasicText("这是Skia的Compose，不是AndroidX的", style = TextStyle(Color(0xCCFFFFFF), 14.sp))
+                    BasicText("这是Hiro的Compose（By Skia），不是AndroidX的", style = TextStyle(Color(0xCCFFFFFF), 14.sp))
                 }
             }
         }

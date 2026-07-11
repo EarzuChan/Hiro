@@ -13,6 +13,8 @@ internal object HiroDependencyPolicy {
         "$ANDROIDX_GROUP.savedstate" to setOf("savedstate-compose"),
         "$JETBRAINS_GROUP.androidx.lifecycle" to setOf("lifecycle-runtime-compose", "lifecycle-viewmodel-compose", "lifecycle-viewmodel-navigation3"),
         "$JETBRAINS_GROUP.androidx.savedstate" to setOf("savedstate-compose")
+
+        // CHECK：要不要BAN ANDROIDX.ACTIVITY.ACTIVITY-COMPOSE？我们已内建类似功能
     )
 
     fun isComposeModule(group: String) = group == "$ANDROIDX_GROUP.compose" || group.startsWith("$ANDROIDX_GROUP.compose.") || group == "$JETBRAINS_GROUP.compose" || group.startsWith("$JETBRAINS_GROUP.compose.")

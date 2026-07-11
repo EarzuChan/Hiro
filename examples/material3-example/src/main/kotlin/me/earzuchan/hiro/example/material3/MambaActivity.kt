@@ -1,7 +1,8 @@
 package me.earzuchan.hiro.example.material3
 
-import android.app.Activity
 import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,14 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowCompat.enableEdgeToEdge
 import me.earzuchan.hiro.compose.setHiroComposeContent
 
-class MambaActivity : Activity() {
+class MambaActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        enableEdgeToEdge(window)
+        enableEdgeToEdge()
         setHiroComposeContent {
             var useDark by remember { mutableStateOf(true) }
             val scrollState = rememberScrollState()
