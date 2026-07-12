@@ -72,6 +72,7 @@
 ## 说明
 
 - 本项目的 Compose 和 Skiko 内部上游依赖会随 Compose Multiplatform（CMP）的主要稳定版本一同更新。此外，当使用 Hiro Compose 或 Hiro Material 3 时，您无需引入官方（原始）的Compose 依赖项（无论是 AndroidX 还是 CMP）。这能确保所有 Compose 内容都基于我们特定的类路径（Hiro 独家的 Android Compose Skiko）进行解析。我们的 Hiro Gradle 插件（HGP）也会帮您使您和您的依赖不额外引入原版 Compose
+- Skia 我们暂只对接 OpenGL 而不引入 Vulkan，这是出于包体积、设备兼容性与实现逻辑复杂度的考量
 - 我们根据 AOSP Material 3 水波纹动画的底层原理，使用 Skiko 图形栈复刻了该效果。这使得在低版本 Android、魔改 ROM 上也能有一致的 Material 3 水波纹体验。这个复刻已内含在 Hiro Material 3 中，我们或许之后会另外贡献给上游CMP
 - 我们修复了 JetBrains Skiko Android 原生库中存在的 `JNI Critical Section Violation: using JNI after critical get` 问题。Hiro Skia 也已含有我们修复后构建的本机库（x64 和 Arm64）。我们或许之后会另外贡献给上游仓库
 - Hiro Skia 基本上是为 Hiro Compose 打造的。我们没有直接依赖存在已知 Bug（比如把 `makeWH` 传成了 `width,width`）的 JetBrains 官方安卓示例，而是实现了一套轻量级的 Skia 的 Layer 和 SurfaceView，对于 Hiro Compose 的显示是基本够用，而独立的 Skia 承载用途，则未经深度测试
