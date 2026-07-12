@@ -12,3 +12,4 @@
 - BuildLogic优化：是否需要再简化代码？黑曼巴
 - 考虑本机库、Compose的减小化、可被Tree-shake和架构裁剪
 - 切换系统颜色导致Compose重置（可能是Activity重开）。但其实有办法让Activity不重开，想办法解决一下
+- 安卓7没正式试过：太老了，模拟器都与我HyperV不相容。只能说是理论支持
