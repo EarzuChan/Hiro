@@ -28,6 +28,7 @@ class HiroSkiaLayer(private val config: HiroSkiaLayerConfig = HiroSkiaLayerConfi
     fun attachTo(container: ViewGroup): HiroSkiaSurfaceView {
         checkHiroMainThread()
         check(surfaceView == null) { "HiroSkiaLayer 已经挂载" }
+        HiroSkiaRuntime.initialize(container.context)
 
         val view = HiroSkiaSurfaceView(container.context, this, config)
         container.addView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))

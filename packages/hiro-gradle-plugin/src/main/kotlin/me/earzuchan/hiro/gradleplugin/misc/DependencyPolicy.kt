@@ -15,6 +15,7 @@ internal object HiroDependencyPolicy {
         "$JETBRAINS_GROUP.androidx.savedstate" to setOf("savedstate-compose")
 
         // CHECK：要不要BAN ANDROIDX.ACTIVITY.ACTIVITY-COMPOSE？我们已内建类似功能
+        // CHECK：要不要BAN `skiko-android-runtime-arm64/x64`，我们已塞入自己的Prebuilt
     )
 
     fun isComposeModule(group: String) = group == "$ANDROIDX_GROUP.compose" || group.startsWith("$ANDROIDX_GROUP.compose.") || group == "$JETBRAINS_GROUP.compose" || group.startsWith("$JETBRAINS_GROUP.compose.")
