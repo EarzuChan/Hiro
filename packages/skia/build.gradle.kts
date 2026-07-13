@@ -23,6 +23,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
+    packaging.jniLibs.keepDebugSymbols += "**/*.so"
+
     publishing { singleVariant("release") { withSourcesJar() } }
 }
 

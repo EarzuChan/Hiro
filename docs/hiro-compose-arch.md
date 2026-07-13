@@ -474,7 +474,7 @@ flowchart LR
 - Android Callback 只在主线程启停和接收系统事件
 - 真正的 Navigation 状态迁移仍在 Hiro 渲染线程完成
 
-## 主要代码落点
+## 相关主要代码
 
 - [HiroComposeView](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/HiroComposeView.kt)：Android 宿主入口、平台状态采集与生命周期映射
 - [HiroComposeRenderController](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/HiroComposeRenderController.kt)：跨线程命令边界与 Compose 控制器状态机

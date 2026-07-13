@@ -21,6 +21,14 @@ android {
         versionName = HiroBuildConfig.version
     }
 
+    buildTypes.named("release") {
+        isMinifyEnabled = true
+        isShrinkResources = true
+        proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+    }
+
+    packaging.jniLibs.useLegacyPackaging = true
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
