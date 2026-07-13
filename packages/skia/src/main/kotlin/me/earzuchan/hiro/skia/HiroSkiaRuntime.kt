@@ -11,8 +11,8 @@ import java.nio.channels.FileChannel
 
 object HiroSkiaRuntime {
     private const val ICU_DATA_ASSET = "blackmamba.icu"
-    private const val ICU_DATA_SIZE = 8_897_024
-    private const val ICU_DATA_CACHE_KEY = "970aa022bc8f86e8aa8ec8da52bd0733c6a01a1cde48b64bfea9e8546c254717"
+    private const val ICU_DATA_SIZE = 778_864
+    private const val ICU_DATA_CACHE_KEY = "c12537022ef818991a7bfed41a76d8d6ae962ffbc0e6511ac762a5d0845e7f7c"
     private const val COPY_BUFFER_SIZE = 64 * 1024
     private const val CACHE_DIRECTORY = "hiro-icu"
     private const val CACHE_LOCK_FILE = "cache.lock"

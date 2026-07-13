@@ -13,3 +13,8 @@
 - 考虑本机库、Compose的减小化、可被Tree-shake和架构裁剪
 - 切换系统颜色导致Compose重置（可能是Activity重开）。但其实有办法让Activity不重开，想办法解决一下
 - 安卓7没正式试过：太老了，模拟器都与我HyperV不相容。只能说是理论支持
+- Skiko 可以变成 Processed Jar，且这同CMP都可以再屏蔽些类
+- 重建活动，Activity VM 实例能做到不变，而 Hiro VM 实例改变
+
+# 紧急
+- SelectionContainer 未顶替 Hiro ClipboardUtils_desktopKt
