@@ -2,7 +2,7 @@
 
 ## 设计目标
 
-Hiro Compose 的目标，是让 Android API 24+ 直接运行 Skiko/Skia 版 Compose，而非 AndroidX Compose。
+Hiro Compose 的目标，是让 Android API 28 及以上直接运行 Skiko/Skia 版 Compose，而非 AndroidX Compose。
 
 这使得：
 
