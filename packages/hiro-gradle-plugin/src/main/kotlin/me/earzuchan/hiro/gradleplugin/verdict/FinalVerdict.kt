@@ -136,7 +136,7 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
         if (reportedVariantConsistency.add(reportKey)) {
             val commonCount = pair.first.keys.intersect(pair.second.keys).size
 
-            project.logger.lifecycle("Hiro Gradle 插件：${project.path}:${coordinates.family} 编译期/运行期 classpath 三方 KMP 变体一致性检查通过，共同模块 $commonCount 个")
+            project.logger.lifecycle("Hiro Gradle 插件：检查通过，${project.path}:${coordinates.family} 编译期/运行期 classpath 三方 KMP 变体一致性良好，共同模块 $commonCount 个")
         }
     }
 
