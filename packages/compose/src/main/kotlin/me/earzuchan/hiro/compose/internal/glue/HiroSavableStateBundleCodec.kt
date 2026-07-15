@@ -217,6 +217,7 @@ internal class HiroSavableStateBundleCodec(
 
     private fun Bundle.encodeExtendedValue(value: Any) {
         val customCodec = configuration.codecFor(value::class)
+
         if (customCodec != null) {
             putInt(TYPE, TYPE_CUSTOM)
             putString(TYPE_ID, customCodec.typeId)

@@ -8,9 +8,12 @@ import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.PlatformInsets
 import androidx.compose.ui.platform.PlatformWindowInsets
+import me.earzuchan.hiro.compose.windowinsets.HiroInsetsValues
+import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
+import me.earzuchan.hiro.compose.windowinsets.normalized
 
 @OptIn(InternalComposeUiApi::class)
-class HiroMutablePlatformWindowInsets : PlatformWindowInsets { // TIPS：AI 建议是不要使得这个类公开化，而是让用户想自定义时传一个快照
+internal class HiroMutablePlatformWindowInsets : PlatformWindowInsets {
     private val captionBarInsets = HiroMutablePlatformInsets()
     private val displayCutoutInsets = HiroMutablePlatformInsets()
     private val imeInsets = HiroMutablePlatformInsets()
@@ -38,7 +41,8 @@ class HiroMutablePlatformWindowInsets : PlatformWindowInsets { // TIPS：AI 建�
     override val waterfall: PlatformInsets get() = waterfallInsets
 
     // TIPS：这是控制反转，被上级调用以更新值
-    fun update(next: HiroPlatformWindowInsetsSnapshot): Boolean {
+    fun update(snapshot: HiroWindowInsetsSnapshot): Boolean {
+        val next = snapshot.normalized()
         var changed = false
 
         changed = captionBarInsets.update(next.captionBar) || changed
@@ -69,33 +73,6 @@ class HiroMutablePlatformWindowInsets : PlatformWindowInsets { // TIPS：AI 建�
     }
 }
 
-data class HiroPlatformWindowInsetsSnapshot(
-    val captionBar: HiroInsetsValues = HiroInsetsValues.Zero,
-    val displayCutout: HiroInsetsValues = HiroInsetsValues.Zero,
-    val ime: HiroInsetsValues = HiroInsetsValues.Zero,
-    val mandatorySystemGestures: HiroInsetsValues = HiroInsetsValues.Zero,
-    val navigationBars: HiroInsetsValues = HiroInsetsValues.Zero,
-    val statusBars: HiroInsetsValues = HiroInsetsValues.Zero,
-    val systemBars: HiroInsetsValues = HiroInsetsValues.Zero,
-    val systemGestures: HiroInsetsValues = HiroInsetsValues.Zero,
-    val tappableElement: HiroInsetsValues = HiroInsetsValues.Zero,
-    val waterfall: HiroInsetsValues = HiroInsetsValues.Zero,
-    val displayCutouts: List<Rect> = emptyList(),
-)
-
-data class HiroInsetsValues(val left: Int = 0, val top: Int = 0, val right: Int = 0, val bottom: Int = 0) {
-    fun normalized() = HiroInsetsValues(
-        left = left.coerceAtLeast(0),
-        top = top.coerceAtLeast(0),
-        right = right.coerceAtLeast(0),
-        bottom = bottom.coerceAtLeast(0),
-    )
-
-    companion object {
-        val Zero = HiroInsetsValues()
-    }
-}
-
 @OptIn(InternalComposeUiApi::class)
 private class HiroMutablePlatformInsets : PlatformInsets {
     private var values by mutableStateOf(HiroInsetsValues.Zero)
@@ -106,10 +83,9 @@ private class HiroMutablePlatformInsets : PlatformInsets {
     override val bottom get() = values.bottom
 
     fun update(next: HiroInsetsValues): Boolean {
-        val normalized = next.normalized()
-        if (values == normalized) return false
+        if (values == next) return false
 
-        values = normalized
+        values = next
         return true
     }
 }

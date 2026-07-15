@@ -9,10 +9,12 @@ import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
+import me.earzuchan.hiro.compose.windowinsets.HiroInsetsValues
+import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
 
-internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (HiroPlatformWindowInsetsSnapshot) -> Unit) {
+internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (HiroWindowInsetsSnapshot) -> Unit) {
     private var hostView: View? = null
-    private var lastSnapshot: HiroPlatformWindowInsetsSnapshot? = null
+    private var lastSnapshot: HiroWindowInsetsSnapshot? = null
 
     companion object {
         private const val TAG = "HiroWindowInsetsFiddler"
@@ -91,7 +93,7 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (Hir
     }
 }
 
-private fun WindowInsetsCompat.toHiroSnapshot() = HiroPlatformWindowInsetsSnapshot(
+private fun WindowInsetsCompat.toHiroSnapshot() = HiroWindowInsetsSnapshot(
     captionBar = getInsets(WindowInsetsCompat.Type.captionBar()).toHiroInsetsValues(),
     displayCutout = getInsets(WindowInsetsCompat.Type.displayCutout()).toHiroInsetsValues(),
     ime = getInsets(WindowInsetsCompat.Type.ime()).toHiroInsetsValues(),

@@ -28,6 +28,7 @@ internal class HiroArchitectureComponentsOwner(restoredState: Bundle?, private v
     private val ownerThread = Thread.currentThread()
 
     private var closed = false
+    private var closeCheckpointTaken = false
 
     override val lifecycleOwner get() = this
     override val navigationEventDispatcherOwner get() = this
@@ -78,6 +79,14 @@ internal class HiroArchitectureComponentsOwner(restoredState: Bundle?, private v
         publishSavedState(state)
     }
 
+    fun prepareForClose() {
+        checkOwnerThread()
+        if (closed || closeCheckpointTaken) return
+
+        checkpointSavedState()
+        closeCheckpointTaken = true
+    }
+
     fun dispatchNavigationBack() {
         checkOwnerThread()
 
@@ -88,11 +97,33 @@ internal class HiroArchitectureComponentsOwner(restoredState: Bundle?, private v
         checkOwnerThread()
         if (closed) return
 
-        checkpointSavedState()
+        var failure: Throwable? = null
+        if (!closeCheckpointTaken) try {
+            checkpointSavedState()
+        } catch (throwable: Throwable) {
+            failure = throwable
+        }
+
         closed = true
-        navigationEventDispatcher.dispose()
-        lifecycle.currentState = Lifecycle.State.DESTROYED
-        viewModelStore.clear()
+        try {
+            navigationEventDispatcher.dispose()
+        } catch (throwable: Throwable) {
+            failure?.addSuppressed(throwable) ?: run { failure = throwable }
+        }
+
+        try {
+            lifecycle.currentState = Lifecycle.State.DESTROYED
+        } catch (throwable: Throwable) {
+            failure?.addSuppressed(throwable) ?: run { failure = throwable }
+        }
+
+        try {
+            viewModelStore.clear()
+        } catch (throwable: Throwable) {
+            failure?.addSuppressed(throwable) ?: run { failure = throwable }
+        }
+
+        failure?.let { throw it }
     }
 
     private fun checkOwnerThread() = check(Thread.currentThread() === ownerThread) { "Hiro Architecture Components Owner 只能由创建它的渲染线程操作" }

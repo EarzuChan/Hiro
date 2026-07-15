@@ -4,23 +4,19 @@ import android.app.Activity
 import androidx.compose.runtime.Composable
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 
-// CHECK：参数没有组合上下文（浮木）
-fun Activity.setHiroComposeContent(content: @Composable () -> Unit): HiroComposeView {
-    return setHiroComposeContent(HiroSavableStateConfiguration.DEFAULT, content)
-}
+fun Activity.setHiroComposeContent(content: @Composable () -> Unit) = setHiroComposeContent(HiroComposeConfiguration.DEFAULT, content)
 
-fun Activity.setHiroComposeContent(
-    savableStateConfiguration: HiroSavableStateConfiguration,
-    content: @Composable () -> Unit,
-): HiroComposeView {
-    // TODO：原有没有顶替复用
-
-    val composeView = HiroComposeView(this, savableStateConfiguration)
-
+fun Activity.setHiroComposeContent(configuration: HiroComposeConfiguration, content: @Composable () -> Unit): HiroComposeView {
+    val composeView = HiroComposeView(this, configuration, ACTIVITY_CONTENT_SAVED_STATE_KEY)
+    composeView.id = R.id.hiro_compose_view
     composeView.setContent(content)
-
-    // CHECK：没有设SavedStateOwner？会不会有问题？
     setContentView(composeView)
-
     return composeView
 }
+
+fun Activity.setHiroComposeContent(savableStateConfiguration: HiroSavableStateConfiguration, content: @Composable () -> Unit) = setHiroComposeContent(
+    configuration = hiroComposeConfiguration { savableState(savableStateConfiguration) },
+    content = content,
+)
+
+private const val ACTIVITY_CONTENT_SAVED_STATE_KEY = "activity-content"

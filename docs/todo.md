@@ -16,5 +16,5 @@
 - Skiko 可以变成 Processed Jar，且这同CMP都可以再屏蔽些类
 - 重建活动，Activity VM 实例能做到不变，而 Hiro VM 实例改变
 
-# 紧急
+# 修复
 - SelectionContainer 未顶替 Hiro ClipboardUtils_desktopKt

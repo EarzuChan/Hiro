@@ -1,16 +1,18 @@
 package me.earzuchan.hiro.compose.savable
 
 import androidx.savedstate.serialization.SavedStateConfiguration
+import me.earzuchan.hiro.compose.HiroComposeConfigurationDsl
 import kotlin.reflect.KClass
 
 /** Hiro Compose 单个 Scene 使用的不可变 SavableState 编解码配置 */
 class HiroSavableStateConfiguration private constructor(val kotlinSerializationConfiguration: SavedStateConfiguration, private val codecsByType: Map<KClass<*>, HiroSavableStateCodec<*>>, private val codecsById: Map<String, HiroSavableStateCodec<*>>) {
     /** 构造一个新的不可变配置 */
-    class Builder {
-        var kotlinSerializationConfiguration: SavedStateConfiguration = SavedStateConfiguration.DEFAULT
+    @HiroComposeConfigurationDsl
+    class Builder internal constructor(base: HiroSavableStateConfiguration? = null) {
+        var kotlinSerializationConfiguration: SavedStateConfiguration = base?.kotlinSerializationConfiguration ?: SavedStateConfiguration.DEFAULT
 
-        private val codecsByType = linkedMapOf<KClass<*>, HiroSavableStateCodec<*>>()
-        private val codecsById = linkedMapOf<String, HiroSavableStateCodec<*>>()
+        private val codecsByType = linkedMapOf<KClass<*>, HiroSavableStateCodec<*>>().apply { base?.let { putAll(it.codecsByType) } }
+        private val codecsById = linkedMapOf<String, HiroSavableStateCodec<*>>().apply { base?.let { putAll(it.codecsById) } }
 
         /** 注册一个精确类型 Codec，同一类型和同一 typeId 均只允许注册一次 */
         fun addCodec(codec: HiroSavableStateCodec<*>): Builder = apply {
@@ -22,7 +24,7 @@ class HiroSavableStateConfiguration private constructor(val kotlinSerializationC
             codecsById[codec.typeId] = codec
         }
 
-        fun build() = HiroSavableStateConfiguration(
+        internal fun build() = HiroSavableStateConfiguration(
             kotlinSerializationConfiguration = kotlinSerializationConfiguration,
             codecsByType = codecsByType.toMap(),
             codecsById = codecsById.toMap(),
@@ -32,6 +34,8 @@ class HiroSavableStateConfiguration private constructor(val kotlinSerializationC
     internal fun codecFor(type: KClass<*>) = codecsByType[type]
 
     internal fun codecFor(typeId: String) = codecsById[typeId]
+
+    internal fun toBuilder() = Builder(this)
 
     companion object {
         @JvmField

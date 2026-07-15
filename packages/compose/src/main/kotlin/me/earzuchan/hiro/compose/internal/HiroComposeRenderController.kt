@@ -3,15 +3,16 @@ package me.earzuchan.hiro.compose.internal
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.Lifecycle
-import me.earzuchan.hiro.compose.HiroSkiaComposeScene
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
-import me.earzuchan.hiro.compose.internal.windowinsets.HiroPlatformWindowInsetsSnapshot
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
+import me.earzuchan.hiro.compose.HiroViewConfigurationSnapshot
+import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
 import me.earzuchan.hiro.skia.HiroSkiaLayer
 import me.earzuchan.hiro.skia.HiroSkiaRenderDelegate
 import me.earzuchan.hiro.skia.HiroSkiaRenderLifecycleDelegate
@@ -19,23 +20,29 @@ import org.jetbrains.skia.Canvas
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-internal data class HiroComposeEnvironment(val density: Density, val layoutDirection: LayoutDirection, val systemTheme: SystemTheme)
+internal data class HiroComposeEnvironment(
+    val density: Density,
+    val layoutDirection: LayoutDirection,
+    val systemTheme: SystemTheme,
+    val localeList: LocaleList,
+    val viewConfiguration: HiroViewConfigurationSnapshot,
+)
 
-internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, initialEnvironment: HiroComposeEnvironment, private val requestInputMode: (InputMode) -> Boolean, private val requestNavigationBackHandling: (Boolean) -> Boolean, private val savedStateTransport: HiroSavedStateTransport, private val savableStateConfiguration: HiroSavableStateConfiguration) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate {
+internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, initialEnvironment: HiroComposeEnvironment, initialWindowInsets: HiroWindowInsetsSnapshot, private val requestInputMode: (InputMode) -> Boolean, private val requestNavigationBackHandling: (Boolean) -> Boolean, private val savedStateTransport: HiroSavedStateTransport, private val savableStateConfiguration: HiroSavableStateConfiguration) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate {
     private val commands = HiroComposeCommandMailbox()
     private val drainScheduled = AtomicBoolean(false)
     private val state = AtomicReference(HiroComposeRenderState.WaitingForRenderThread)
     private val latestEnvironment = AtomicReference(initialEnvironment)
     private val latestViewport = AtomicReference<IntSize?>(null)
-    private val latestWindowInsets = AtomicReference<HiroPlatformWindowInsetsSnapshot?>(null)
+    private val latestWindowInsets = AtomicReference(initialWindowInsets)
     private val latestInputMode = AtomicReference<InputMode?>(null)
-    private val dispatcher = HiroSkiaRenderDispatcher(layer::isOnRenderThread, layer::postToRenderThread, layer::queueToRenderThread)
+    private val dispatcher = HiroSkiaRenderDispatcher(layer::isOnRenderThread, layer::queueToRenderThread)
 
     private var scene: HiroSkiaComposeScene? = null
     private var dispatcherRegistration: AutoCloseable? = null
     private var terminated = false
 
-    fun setContent(content: @Composable () -> Unit): Boolean = post(HiroComposeCommand.SetContent(content))
+    fun setContent(content: @Composable () -> Unit) = post(HiroComposeCommand.SetContent(content))
 
     fun updateEnvironment(environment: HiroComposeEnvironment): Boolean {
         latestEnvironment.set(environment)
@@ -47,7 +54,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
         return post(HiroComposeCommand.ApplyViewport)
     }
 
-    fun updateWindowInsets(snapshot: HiroPlatformWindowInsetsSnapshot): Boolean {
+    fun updateWindowInsets(snapshot: HiroWindowInsetsSnapshot): Boolean {
         latestWindowInsets.set(snapshot)
         return post(HiroComposeCommand.ApplyWindowInsets)
     }
@@ -71,22 +78,33 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
     }
 
     fun onHostResumeOnRenderThread() {
-        checkRenderThread()
+        val previous = dispatcher.enterCurrent()
+        try {
+            checkRenderThread()
 
-        if (!state.get().acceptsCommands) return
-        if (latestViewport.get() == null) return
-        drainCommands()
-        if (!state.get().acceptsCommands) return
-        ensureScene()
+            if (!state.get().acceptsCommands) return
+            if (latestViewport.get() == null) return
+            drainCommands()
+            if (!state.get().acceptsCommands) return
+            ensureScene()
+        } finally {
+            dispatcher.leaveCurrent(previous)
+        }
     }
 
     fun onHostPauseOnRenderThread() {
-        checkRenderThread()
+        val previous = dispatcher.enterCurrent()
+        try {
+            checkRenderThread()
 
-        if (!state.get().acceptsCommands) return
-        drainCommands()
-        if (!state.get().acceptsCommands) return
-        scene?.checkpointSavedState()
+            if (!state.get().acceptsCommands) return
+            if (scene == null) return
+            drainCommands()
+            if (!state.get().acceptsCommands) return
+            scene?.checkpointSavedState()
+        } finally {
+            dispatcher.leaveCurrent(previous)
+        }
     }
 
     fun beginClose() {
@@ -107,40 +125,50 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
     }
 
     override fun onRender(canvas: Canvas, width: Int, height: Int, nanoTime: Long) {
-        checkRenderThread()
+        val previous = dispatcher.enterCurrent()
+        try {
+            checkRenderThread()
 
-        if (terminated || state.get() == HiroComposeRenderState.Closing) return
-        latestViewport.set(IntSize(width, height))
-        drainCommands()
-        scene?.render(canvas, width, height, nanoTime)
+            if (terminated || state.get() == HiroComposeRenderState.Closing) return
+            latestViewport.set(IntSize(width, height))
+            drainCommands()
+            scene?.render(canvas, width, height, nanoTime)
+        } finally {
+            dispatcher.leaveCurrent(previous)
+        }
     }
 
     override fun onRenderThreadClosing() {
-        checkRenderThread()
-        if (terminated) return
-
-        state.set(HiroComposeRenderState.Closing)
-        commands.clear()
-        var failure: Throwable? = null
-
+        val previous = dispatcher.enterCurrent()
         try {
-            scene?.close()
-        } catch (throwable: Throwable) {
-            failure = throwable
-        }
+            checkRenderThread()
+            if (terminated) return
 
-        scene = null
-        try {
-            dispatcherRegistration?.close()
-        } catch (throwable: Throwable) {
-            failure?.addSuppressed(throwable) ?: run { failure = throwable }
-        }
+            state.set(HiroComposeRenderState.Closing)
+            commands.clear()
+            var failure: Throwable? = null
 
-        dispatcherRegistration = null
-        dispatcher.close()
-        terminated = true
-        state.set(HiroComposeRenderState.Closed)
-        failure?.let { throw it }
+            try {
+                scene?.close()
+            } catch (throwable: Throwable) {
+                failure = throwable
+            }
+
+            scene = null
+            try {
+                dispatcherRegistration?.close()
+            } catch (throwable: Throwable) {
+                failure?.addSuppressed(throwable) ?: run { failure = throwable }
+            }
+
+            dispatcherRegistration = null
+            dispatcher.close()
+            terminated = true
+            state.set(HiroComposeRenderState.Closed)
+            failure?.let { throw it }
+        } finally {
+            dispatcher.leaveCurrent(previous)
+        }
     }
 
     private fun post(command: HiroComposeCommand): Boolean {
@@ -154,7 +182,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
 
     private fun signalDrain() {
         if (!state.get().acceptsCommands || !drainScheduled.compareAndSet(false, true)) return
-        if (!layer.postToRenderThread(Runnable(::drainCommands))) drainScheduled.set(false)
+        if (!dispatcher.tryDispatchLater(Runnable(::drainCommands))) drainScheduled.set(false)
     }
 
     private fun drainCommands() {
@@ -182,7 +210,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
                     is HiroComposeCommand.SetContent -> ensureScene().setContent(command.content)
                     HiroComposeCommand.ApplyEnvironment -> ensureScene().updateEnvironment(latestEnvironment.get())
                     HiroComposeCommand.ApplyViewport -> latestViewport.get()?.let(ensureScene()::updateViewport)
-                    HiroComposeCommand.ApplyWindowInsets -> latestWindowInsets.get()?.let(ensureScene()::updateWindowInsets)
+                    HiroComposeCommand.ApplyWindowInsets -> ensureScene().updateWindowInsets(latestWindowInsets.get())
                     HiroComposeCommand.ApplyInputMode -> latestInputMode.get()?.let(ensureScene()::updateInputMode)
                     is HiroComposeCommand.PointerEvent -> ensureScene().sendPointerEvent(command.event)
                     is HiroComposeCommand.MoveLifecycle -> ensureScene().moveLifecycleTo(command.state)
@@ -216,7 +244,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
                 savableStateConfiguration = savableStateConfiguration,
             ).also { nextScene ->
                 createdScene = nextScene
-                latestWindowInsets.get()?.let(nextScene::updateWindowInsets)
+                nextScene.updateWindowInsets(latestWindowInsets.get())
                 latestInputMode.get()?.let(nextScene::updateInputMode)
                 scene = nextScene
                 dispatcherRegistration = registration
@@ -227,11 +255,13 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
             } catch (closeFailure: Throwable) {
                 throwable.addSuppressed(closeFailure)
             }
+
             try {
                 registration.close()
             } catch (closeFailure: Throwable) {
                 throwable.addSuppressed(closeFailure)
             }
+
             throw throwable
         }
     }

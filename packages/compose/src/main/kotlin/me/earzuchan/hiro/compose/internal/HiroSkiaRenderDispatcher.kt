@@ -4,21 +4,21 @@ import kotlinx.coroutines.CoroutineDispatcher
 import java.util.ArrayDeque
 import kotlin.coroutines.CoroutineContext
 
-internal class HiroSkiaRenderDispatcher(private val isRenderThread: () -> Boolean, private val dispatchToRenderThread: (Runnable) -> Boolean, private val enqueueToRenderThread: (Runnable) -> Boolean) : CoroutineDispatcher(), AutoCloseable {
+internal class HiroSkiaRenderDispatcher(private val isRenderThread: () -> Boolean, private val enqueueToRenderThread: (Runnable) -> Boolean) : CoroutineDispatcher(), AutoCloseable {
     @Volatile
     private var closed = false
 
     fun isOnRenderThread(): Boolean = isRenderThread()
 
     fun tryDispatch(block: Runnable) = if (closed) false
-    else if (isOnRenderThread()) {
-        block.run()
+    else if (isOnRenderThread() && HiroRenderDispatcherRegistry.currentDispatcher() === this) {
+        runCurrent(block::run)
         true
-    } else dispatchToRenderThread(block)
+    } else enqueueToRenderThread(scoped(block))
 
-    fun tryDispatchLater(block: Runnable): Boolean = if (closed) false else enqueueToRenderThread(block)
+    fun tryDispatchLater(block: Runnable): Boolean = if (closed) false else enqueueToRenderThread(scoped(block))
 
-    override fun isDispatchNeeded(context: CoroutineContext): Boolean = !isOnRenderThread()
+    override fun isDispatchNeeded(context: CoroutineContext): Boolean = !isOnRenderThread() || HiroRenderDispatcherRegistry.currentDispatcher() !== this
 
     override fun dispatch(context: CoroutineContext, block: Runnable) {
         if (!tryDispatch(block) && !closed) error("无法把 Hiro Compose 任务投递到 Skia 渲染线程")
@@ -27,11 +27,20 @@ internal class HiroSkiaRenderDispatcher(private val isRenderThread: () -> Boolea
     override fun close() {
         closed = true
     }
+
+    fun enterCurrent(): HiroSkiaRenderDispatcher? = HiroRenderDispatcherRegistry.enterCurrent(this)
+
+    fun leaveCurrent(previous: HiroSkiaRenderDispatcher?) = HiroRenderDispatcherRegistry.leaveCurrent(previous)
+
+    fun <T> runCurrent(action: () -> T): T = HiroRenderDispatcherRegistry.withCurrent(this, action)
+
+    private fun scoped(block: Runnable) = Runnable { runCurrent(block::run) }
 }
 
 internal object HiroRenderDispatcherRegistry {
     private val lock = Any()
     private val dispatchers = mutableListOf<HiroSkiaRenderDispatcher>()
+    private val current = ThreadLocal<HiroSkiaRenderDispatcher?>()
 
     fun register(dispatcher: HiroSkiaRenderDispatcher): AutoCloseable {
         synchronized(lock) {
@@ -46,9 +55,28 @@ internal object HiroRenderDispatcherRegistry {
         }
     }
 
-    fun currentDispatcher(): HiroSkiaRenderDispatcher? = synchronized(lock) { dispatchers.firstOrNull { it.isOnRenderThread() } }
+    fun currentDispatcher(): HiroSkiaRenderDispatcher? = current.get()
 
     fun snapshot(): List<HiroSkiaRenderDispatcher> = synchronized(lock) { dispatchers.toList() }
+
+    fun enterCurrent(dispatcher: HiroSkiaRenderDispatcher): HiroSkiaRenderDispatcher? {
+        val previous = current.get()
+        current.set(dispatcher)
+        return previous
+    }
+
+    fun leaveCurrent(previous: HiroSkiaRenderDispatcher?) {
+        current.set(previous)
+    }
+
+    fun <T> withCurrent(dispatcher: HiroSkiaRenderDispatcher, action: () -> T): T {
+        val previous = enterCurrent(dispatcher)
+        return try {
+            action()
+        } finally {
+            leaveCurrent(previous)
+        }
+    }
 }
 
 internal object HiroSnapshotApplyDispatcher : CoroutineDispatcher() {

@@ -9,150 +9,132 @@ import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.SystemTheme
-import androidx.compose.ui.input.InputMode
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.lifecycle.Lifecycle
-import me.earzuchan.hiro.compose.internal.HiroComposeEnvironment
-import me.earzuchan.hiro.compose.internal.HiroComposeRenderController
-import me.earzuchan.hiro.compose.internal.architecture.HiroAndroidHostBridge
+import me.earzuchan.hiro.compose.internal.HiroComposeHostSession
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
-import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputModeFiddler
-import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputRouter
-import me.earzuchan.hiro.compose.internal.input.HiroComposeInputSink
-import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
-import me.earzuchan.hiro.compose.internal.windowinsets.HiroWindowInsetsFiddlerForAndroid
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
-import me.earzuchan.hiro.skia.HiroSkiaLayer
 
-class HiroComposeView private constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int, savableStateConfiguration: HiroSavableStateConfiguration) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
-    private val layer = HiroSkiaLayer()
+class HiroComposeView private constructor(
+    context: Context,
+    attrs: AttributeSet?,
+    defStyleAttr: Int,
+    private val configuration: HiroComposeConfiguration,
+    private val explicitSavedStateKey: String?,
+) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
+    @JvmOverloads
+    constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) : this(
+        context = context,
+        attrs = attrs,
+        defStyleAttr = defStyleAttr,
+        configuration = HiroComposeConfiguration.DEFAULT,
+        explicitSavedStateKey = null,
+    )
+
+    @JvmOverloads
+    constructor(context: Context, configuration: HiroComposeConfiguration, savedStateKey: String? = null) : this(
+        context = context,
+        attrs = null,
+        defStyleAttr = 0,
+        configuration = configuration,
+        explicitSavedStateKey = savedStateKey,
+    )
+
+    constructor(context: Context, savableStateConfiguration: HiroSavableStateConfiguration) : this(
+        context = context,
+        configuration = hiroComposeConfiguration { savableState(savableStateConfiguration) },
+    )
+
     private val savedStateTransport = HiroSavedStateTransport()
-    private val renderController = HiroComposeRenderController(
-        layer = layer,
-        initialEnvironment = currentEnvironment(),
-        requestInputMode = ::requestInputModeFromRenderThread,
-        requestNavigationBackHandling = ::requestNavigationBackHandlingFromRenderThread,
-        savedStateTransport = savedStateTransport,
-        savableStateConfiguration = savableStateConfiguration,
-    )
-    private val hostBridge = HiroAndroidHostBridge(
-        savedStateTransport = savedStateTransport,
-        onLifecycleChanged = ::synchronizeRenderLifecycle,
-        onNavigationBack = renderController::dispatchNavigationBack,
-    )
-    private val windowInsetsReader = HiroWindowInsetsFiddlerForAndroid(renderController::updateWindowInsets)
-    private val inputModeReader = HiroAndroidInputModeFiddler(renderController::updateInputMode)
-    private val inputRouter = HiroAndroidInputRouter(object : HiroComposeInputSink {
-        override fun sendPointerEvent(event: HiroComposePointerEvent) = renderController.sendPointerEvent(event)
-
-        override fun cancelPointerInput() {
-            renderController.cancelPointerInput()
-        }
-    })
-
-    @Volatile
+    private var content: (@Composable () -> Unit)? = null
+    private var activeSession: HiroComposeHostSession? = null
+    private var savedStateKeyResolved = false
+    private var resolvedSavedStateKey: String? = null
     private var closed = false
-
-    private var renderActive: Boolean? = null
 
     companion object {
         private const val TAG = "HiroComposeView"
     }
 
-    @JvmOverloads
-    constructor(
-        context: Context,
-        attrs: AttributeSet? = null,
-        defStyleAttr: Int = 0,
-    ) : this(context, attrs, defStyleAttr, HiroSavableStateConfiguration.DEFAULT)
-
-    constructor(context: Context, savableStateConfiguration: HiroSavableStateConfiguration) : this(context, null, 0, savableStateConfiguration)
-
     init {
-        if (id == NO_ID) id = R.id.hiro_compose_view
-
+        require(explicitSavedStateKey == null || explicitSavedStateKey.isNotBlank()) { "HiroComposeView 的 SavedState key 不能为空" }
         layoutParams = ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
         isFocusable = true
         isFocusableInTouchMode = true
-        layer.renderDelegate = renderController
-
         Log.d(TAG, "被创建")
     }
 
     fun setContent(content: @Composable () -> Unit) {
         checkMainThread()
-        check(!closed) { "HiroComposeView 已经关闭，不能再设置 Compose 内容" }
-        check(renderController.setContent(content)) { "Hiro Compose 内容无法投递到渲染线程" }
-
+        check(!closed) { "HiroComposeView 已经永久关闭，不能再设置 Compose 内容" }
+        this.content = content
+        activeSession?.setContent(content)
         Log.d(TAG, "已接收 Compose 内容")
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-
         checkMainThread()
-        if (closed) return
+        check(!closed) { "已经永久关闭的 HiroComposeView 不能重新挂载" }
+        check(activeSession == null) { "HiroComposeView 出现重复宿主会话" }
 
-        hostBridge.attach(this)
-        renderController.updateEnvironment(currentEnvironment())
-        windowInsetsReader.attach(this)
-        inputModeReader.attach(this)
+        val session = HiroComposeHostSession(
+            view = this,
+            configuration = configuration,
+            savedStateKey = resolveSavedStateKey(),
+            savedStateTransport = savedStateTransport,
+            onHostDestroyed = ::close,
+        )
+        activeSession = session
 
-        if (layer.surfaceView == null) {
-            layer.attachTo(this)
-            renderController.wake()
+        try {
+            content?.let(session::setContent)
+            session.attach()
+        } catch (throwable: Throwable) {
+            if (activeSession === session) activeSession = null
+            session.close()
+            throw throwable
         }
 
-        synchronizeRenderLifecycle(force = true)
-        Log.d(TAG, "已挂载到窗口")
+        if (!closed) Log.d(TAG, "已挂载到窗口并创建宿主会话")
     }
 
     override fun onDetachedFromWindow() {
         checkMainThread()
-
-        Log.d(TAG, "将从窗口脱离")
-        close()
+        disposeActiveSession()
+        Log.d(TAG, "已从窗口脱离并销毁宿主会话")
         super.onDetachedFromWindow()
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
-        if (!closed) synchronizeRenderLifecycle()
+        activeSession?.synchronizeLifecycle()
     }
 
     override fun onVisibilityChanged(changedView: android.view.View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
-        if (!closed) synchronizeRenderLifecycle()
+        activeSession?.synchronizeLifecycle()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration?) {
         super.onConfigurationChanged(newConfig)
-
-        if (closed) return
-        renderController.updateEnvironment(currentEnvironment())
-        windowInsetsReader.requestApplyInsets()
+        activeSession?.updateEnvironment()
     }
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         super.onSizeChanged(width, height, oldWidth, oldHeight)
-        if (!closed && width > 0 && height > 0) renderController.updateViewport(IntSize(width, height))
+        activeSession?.updateViewport(width, height)
     }
 
     override fun onRtlPropertiesChanged(layoutDirection: Int) {
         super.onRtlPropertiesChanged(layoutDirection)
-        if (!closed) renderController.updateEnvironment(currentEnvironment())
+        activeSession?.updateEnvironment()
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         if (closed) return false
         if (event.actionMasked == MotionEvent.ACTION_DOWN) requestFocus()
 
-        val handled = inputRouter.dispatchTouchEvent(event)
+        val handled = activeSession?.dispatchTouchEvent(event) == true
         if (event.shouldLogTouchEvent()) Log.d(TAG, "触摸事件：${event.name()}，指针数：${event.pointerCount}，动作指针：${event.actionIndex}，已处理：$handled")
-
         return handled || super.dispatchTouchEvent(event)
     }
 
@@ -160,63 +142,23 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         checkMainThread()
         if (closed) return
         closed = true
-
-        windowInsetsReader.close()
-        inputModeReader.close()
-        renderController.beginClose()
-
-        try {
-            if (layer.surfaceView == null) renderController.closeBeforeRenderThreadStarts() else layer.close()
-        } finally {
-            hostBridge.close()
-            renderActive = null
-        }
-
-        Log.d(TAG, "已完整关闭")
+        disposeActiveSession()
+        Log.d(TAG, "已永久关闭")
     }
 
-    private fun synchronizeRenderLifecycle(force: Boolean = false) {
-        checkMainThread()
-        if (closed || layer.surfaceView == null) return
-
-        val hostState = hostBridge.lifecycleState
-        if (hostState == Lifecycle.State.DESTROYED) {
-            close()
-            return
-        }
-
-        val viewActive = isAttachedToWindow && windowVisibility == VISIBLE && isShown
-        val targetState = when {
-            hostState == Lifecycle.State.RESUMED && viewActive -> Lifecycle.State.RESUMED
-            hostState.isAtLeast(Lifecycle.State.STARTED) -> Lifecycle.State.STARTED
-            else -> Lifecycle.State.CREATED
-        }
-        renderController.updateLifecycle(targetState)
-
-        val shouldRun = targetState == Lifecycle.State.RESUMED
-        if (!force && renderActive == shouldRun) return
-        renderActive = shouldRun
-
-        if (shouldRun) layer.onHostResume(Runnable(renderController::onHostResumeOnRenderThread))
-        else layer.onHostPause(Runnable(renderController::onHostPauseOnRenderThread))
+    private fun disposeActiveSession() {
+        val session = activeSession ?: return
+        activeSession = null
+        session.close()
     }
 
-    private fun requestInputModeFromRenderThread(inputMode: InputMode): Boolean = if (closed) false
-    else post { if (!closed) inputModeReader.request(inputMode) }
+    private fun resolveSavedStateKey(): String? {
+        if (savedStateKeyResolved) return resolvedSavedStateKey
 
-    // TIPS：这里是最神秘的“申请NavBack”
-    private fun requestNavigationBackHandlingFromRenderThread(enabled: Boolean): Boolean = if (closed) false
-    else post { if (!closed) hostBridge.updateNavigationBackHandling(enabled) }
-
-    private fun currentEnvironment() = HiroComposeEnvironment(
-        density = Density(resources.displayMetrics.density, resources.configuration.fontScale),
-        layoutDirection = if (layoutDirection == LAYOUT_DIRECTION_RTL) LayoutDirection.Rtl else LayoutDirection.Ltr,
-        systemTheme = when (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
-            Configuration.UI_MODE_NIGHT_YES -> SystemTheme.Dark
-            Configuration.UI_MODE_NIGHT_NO -> SystemTheme.Light
-            else -> SystemTheme.Unknown
-        }
-    )
+        resolvedSavedStateKey = explicitSavedStateKey ?: id.takeIf { it != NO_ID }?.let { "view-id:$it" }
+        savedStateKeyResolved = true
+        return resolvedSavedStateKey
+    }
 
     private fun checkMainThread() = check(Looper.myLooper() == Looper.getMainLooper()) { "HiroComposeView 只能在安卓主线程操作" }
 }

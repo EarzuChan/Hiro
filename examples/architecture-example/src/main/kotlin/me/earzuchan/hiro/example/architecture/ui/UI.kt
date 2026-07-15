@@ -18,8 +18,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,14 +53,14 @@ fun ArchitecturePage(title: String, activityViewModelId: String, rootViewModelId
         StatusText("$title / Lifecycle $lifecycleState", Color(0xFFF9FAFB), 22)
         StatusText("页面 VM ${viewModel.instanceId} / ${viewModel.creationThread}", Color(0xFFC4B5FD))
         StatusText("SavedStateHandle 计数 $count", Color(0xFF86EFAC))
-        ActionButton("增加页面 VM 计数", "增加页面状态", viewModel::increment)
-        onNavigate?.let { ActionButton("进入详情页", "进入详情页", it) }
-        onBack?.let { ActionButton("返回并清理详情 VM", "返回首页", it) }
+        ActionButton("向页面 VM 计数加值", viewModel::increment)
+        onNavigate?.let { ActionButton("进入详情页", it) }
+        onBack?.let { ActionButton("返回并清理详情 VM", it) }
     }
 }
 
 @Composable
-fun ActionButton(label: String, description: String, onClick: () -> Unit) = Box(Modifier.fillMaxWidth().background(Color(0xFF0F766E)).semantics { contentDescription = description }.clickable(onClick = onClick).padding(16.dp, 13.dp), Alignment.Center) {
+fun ActionButton(label: String, onClick: () -> Unit) = Box(Modifier.fillMaxWidth().background(Color(0xFF0F766E)).clickable(onClick = onClick).padding(16.dp, 13.dp), Alignment.Center) {
     BasicText(label, style = TextStyle(color = Color.White, fontSize = 16.sp))
 }
 

@@ -63,12 +63,12 @@ internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActi
         StatusText("根 Lifecycle $rootLifecycleState / 子 Lifecycle ${childLifecycleOwner.lifecycle.currentState}", Color(0xFFA7F3D0))
         StatusText("返回栈 ${backStack.size} / Saveable $savableCounter", Color.White)
 
-        ActionButton("增加根 VM 与 Saveable", "增加根状态") {
+        ActionButton("向根 VM 与 Saveable 加值") {
             rootViewModel.increment()
             savableCounter++
         }
 
-        ActionButton("重建 Activity 验证恢复", "重建 Activity", onRecreateActivity)
+        ActionButton("重建 Activity 验证恢复", onRecreateActivity)
 
         SavableStateChecks()
 
@@ -80,7 +80,7 @@ internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActi
                 rememberViewModelStoreNavEntryDecorator(),
             ),
             onBack = popBackStack,
-            entryProvider = entryProvider({ NavEntry(it) { StatusText("未知页面：$it", Color.Red) } }) {
+            entryProvider = entryProvider({ NavEntry(it) { page -> StatusText("未知页面：$page", Color.Red) } }) {
                 entry<Home> {
                     ArchitecturePage(
                         title = "首页",
@@ -89,6 +89,7 @@ internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActi
                         onNavigate = { backStack.add(Detail(backStack.size)) },
                     )
                 }
+
                 entry<Detail> { key ->
                     ArchitecturePage(
                         title = "详情 ${key.serial}",
@@ -120,7 +121,7 @@ private fun SavableStateChecks() {
                 }
 
                 StatusText("KtSer $automaticCount / 第三方 Codec $thirdPartyCount", Color(0xFFF0ABFC))
-                ActionButton("增加两类 SeDes 状态", "增加 SeDes 状态") {
+                ActionButton("向两类 SeDes 加值") {
                     automaticCount++
                     thirdPartyCount++
                 }

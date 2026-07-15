@@ -10,11 +10,10 @@ internal class HiroSavedStateTransport {
     private val latestSavedState = AtomicReference(Bundle())
 
     fun acceptRestoredState(state: Bundle?) {
-        check(restoredStateAccepted.compareAndSet(false, true)) { "Hiro SavedState 恢复快照只能设置一次" }
-        restoredState.set(state?.copyForTransport())
+        if (restoredStateAccepted.compareAndSet(false, true)) restoredState.set(state?.copyForTransport())
     }
 
-    fun consumeRestoredState() = restoredState.getAndSet(null)
+    fun snapshotForNewScene() = (restoredState.getAndSet(null) ?: latestSavedState.get()).copyForTransport()
 
     fun publishSavedState(state: Bundle) = latestSavedState.set(state.copyForTransport())
 
