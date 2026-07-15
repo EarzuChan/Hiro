@@ -57,6 +57,12 @@ internal object HiroRenderDispatcherRegistry {
 
     fun currentDispatcher(): HiroSkiaRenderDispatcher? = current.get()
 
+    fun currentRegisteredDispatcher(): HiroSkiaRenderDispatcher? {
+        val dispatcher = current.get() ?: return null
+
+        return synchronized(lock) { dispatcher.takeIf(dispatchers::contains) }
+    }
+
     fun snapshot(): List<HiroSkiaRenderDispatcher> = synchronized(lock) { dispatchers.toList() }
 
     fun enterCurrent(dispatcher: HiroSkiaRenderDispatcher): HiroSkiaRenderDispatcher? {
@@ -71,6 +77,7 @@ internal object HiroRenderDispatcherRegistry {
 
     fun <T> withCurrent(dispatcher: HiroSkiaRenderDispatcher, action: () -> T): T {
         val previous = enterCurrent(dispatcher)
+
         return try {
             action()
         } finally {
@@ -103,7 +110,7 @@ internal object HiroSnapshotApplyDispatcher : CoroutineDispatcher() {
     }
 
     private fun dispatchToAvailableRenderer(block: Runnable): Boolean {
-        HiroRenderDispatcherRegistry.currentDispatcher()?.let { if (it.tryDispatchLater(block)) return true }
+        HiroRenderDispatcherRegistry.currentRegisteredDispatcher()?.let { if (it.tryDispatchLater(block)) return true }
 
         return HiroRenderDispatcherRegistry.snapshot().any { it.tryDispatchLater(block) }
     }

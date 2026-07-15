@@ -21,6 +21,7 @@ import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.savedstate.compose.LocalSavedStateRegistryOwner
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
+import me.earzuchan.hiro.compose.internal.util.name
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroMutablePlatformWindowInsets
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
@@ -81,15 +82,17 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
 
     internal fun updateEnvironment(environment: HiroComposeEnvironment) {
         checkUsable()
+        if (currentEnvironment == environment) return
 
         if (currentEnvironment.density != environment.density) {
             scene.density = environment.density
             currentSize?.let { platformContext.updateWindowInfo(it, environment.density) }
         }
+        if (currentEnvironment.isWindowFocused != environment.isWindowFocused) platformContext.updateWindowFocus(environment.isWindowFocused)
         if (currentEnvironment.layoutDirection != environment.layoutDirection) scene.layoutDirection = environment.layoutDirection
         if (currentEnvironment.systemTheme != environment.systemTheme) systemTheme.value = environment.systemTheme
         if (currentEnvironment.localeList != environment.localeList) platformContext.updateLocaleList(environment.localeList)
-        if (currentEnvironment.viewConfiguration != environment.viewConfiguration) platformContext.updateViewConfiguration(environment.viewConfiguration)
+        if (currentEnvironment.interactionTuning != environment.interactionTuning) platformContext.updateInteractionTuning(environment.interactionTuning)
         currentEnvironment = environment
         scheduleFrame()
     }
@@ -115,8 +118,7 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
     internal fun updateInputMode(inputMode: InputMode) {
         checkUsable()
 
-        platformContext.updateInputMode(inputMode)
-        scheduleFrame()
+        if (platformContext.updateInputMode(inputMode)) scheduleFrame()
     }
 
     internal fun moveLifecycleTo(state: Lifecycle.State) {
@@ -171,11 +173,9 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
     }
 
     @SuppressLint("RestrictedApi")
-    fun render(canvas: SkiaCanvas, width: Int, height: Int, nanoTime: Long) {
+    fun render(canvas: SkiaCanvas, nanoTime: Long) {
         checkUsable()
-        check(width >= 0 && height >= 0) { "Compose Skia Android 渲染尺寸不能为负数" }
 
-        updateViewport(IntSize(width, height))
         scene.render(canvas.asComposeCanvas(), nanoTime)
     }
 
@@ -214,14 +214,4 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
     }
 
     private fun checkRenderThread() = check(dispatcher.isOnRenderThread()) { "HiroSkiaComposeScene 只能在 Skia 渲染线程操作" }
-}
-
-private fun PointerEventType.name() = when (this) {
-    PointerEventType.Press -> "按下"
-    PointerEventType.Release -> "抬起"
-    PointerEventType.Move -> "移动"
-    PointerEventType.Enter -> "进入"
-    PointerEventType.Exit -> "离开"
-    PointerEventType.Scroll -> "滚动"
-    else -> "未知"
 }

@@ -8,10 +8,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 
-// CHECK：这个和我的可自定义接口是否有机统一了
-
-internal class HiroMutableWindowInfo : WindowInfo {
-    override val isWindowFocused get() = true
+internal class HiroMutableWindowInfo(initialWindowFocus: Boolean = false) : WindowInfo {
+    override var isWindowFocused by mutableStateOf(initialWindowFocus)
+        private set
 
     override var containerSize by mutableStateOf(IntSize.Zero)
         private set
@@ -25,6 +24,13 @@ internal class HiroMutableWindowInfo : WindowInfo {
 
         containerSize = size
         containerDpSize = sizeInDp
+        return true
+    }
+
+    fun updateWindowFocus(focused: Boolean): Boolean {
+        if (isWindowFocused == focused) return false
+
+        isWindowFocused = focused
         return true
     }
 }

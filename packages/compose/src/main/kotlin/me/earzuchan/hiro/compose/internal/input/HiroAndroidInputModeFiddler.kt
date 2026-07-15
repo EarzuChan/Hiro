@@ -10,12 +10,7 @@ internal class HiroAndroidInputModeFiddler(private val onInputModeChanged: (Inpu
     private val listener = ViewTreeObserver.OnTouchModeChangeListener { publish(it) }
 
     fun attach(view: View) {
-        if (hostView === view) {
-            publish(view.isInTouchMode)
-            return
-        }
-
-        close()
+        check(hostView == null) { "Hiro Android 输入模式桥已经挂载" }
         hostView = view
         treeObserver = view.viewTreeObserver.also { it.addOnTouchModeChangeListener(listener) }
         publish(view.isInTouchMode)

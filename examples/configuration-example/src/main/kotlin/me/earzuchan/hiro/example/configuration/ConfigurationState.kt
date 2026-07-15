@@ -6,8 +6,8 @@ import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import me.earzuchan.hiro.compose.HiroComposeConfiguration
-import me.earzuchan.hiro.compose.HiroViewConfigurationSnapshot
 import me.earzuchan.hiro.compose.hiroComposeConfiguration
+import me.earzuchan.hiro.compose.interaction.HiroInteractionTuning
 import me.earzuchan.hiro.compose.windowinsets.HiroInsetsValues
 import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
 
@@ -23,7 +23,7 @@ internal enum class InsetsPolicyChoice {
     TransformSystem,
 }
 
-internal enum class ViewConfigurationPolicyChoice {
+internal enum class InteractionPolicyChoice {
     FollowSystem,
     FollowCompose,
     Fixed,
@@ -44,69 +44,76 @@ internal data class ConfigurationState(
     val insetsPolicy: InsetsPolicyChoice = InsetsPolicyChoice.FollowSystem,
     val insetTop: Int = 24,
     val insetBottom: Int = 24,
-    val viewConfigurationPolicy: ViewConfigurationPolicyChoice = ViewConfigurationPolicyChoice.FollowSystem,
+    val interactionPolicy: InteractionPolicyChoice = InteractionPolicyChoice.FollowSystem,
     val touchSlop: Float = 18f,
 ) {
     fun toHiroConfiguration(): HiroComposeConfiguration {
         val configuredTouchSlop = touchSlop
+
         return hiroComposeConfiguration {
-        environment {
-            density {
-                when (densityPolicy) {
-                    GenericPolicyChoice.FollowSystem -> followSystem()
-                    GenericPolicyChoice.Fixed -> fixed(densityValue)
-                    GenericPolicyChoice.TransformSystem -> transformSystem { it * densityValue }
+            environment {
+                density {
+                    when (densityPolicy) {
+                        GenericPolicyChoice.FollowSystem -> followSystem()
+                        GenericPolicyChoice.Fixed -> fixed(densityValue)
+                        GenericPolicyChoice.TransformSystem -> transformSystem { it * densityValue }
+                    }
                 }
-            }
-            fontScale {
-                when (fontScalePolicy) {
-                    GenericPolicyChoice.FollowSystem -> followSystem()
-                    GenericPolicyChoice.Fixed -> fixed(fontScaleValue)
-                    GenericPolicyChoice.TransformSystem -> transformSystem { it * fontScaleValue }
+
+                fontScale {
+                    when (fontScalePolicy) {
+                        GenericPolicyChoice.FollowSystem -> followSystem()
+                        GenericPolicyChoice.Fixed -> fixed(fontScaleValue)
+                        GenericPolicyChoice.TransformSystem -> transformSystem { it * fontScaleValue }
+                    }
                 }
-            }
-            layoutDirection {
-                when (layoutDirectionPolicy) {
-                    GenericPolicyChoice.FollowSystem -> followSystem()
-                    GenericPolicyChoice.Fixed -> fixed(layoutDirectionValue())
-                    GenericPolicyChoice.TransformSystem -> transformSystem { if (it == LayoutDirection.Ltr) LayoutDirection.Rtl else LayoutDirection.Ltr }
+
+                layoutDirection {
+                    when (layoutDirectionPolicy) {
+                        GenericPolicyChoice.FollowSystem -> followSystem()
+                        GenericPolicyChoice.Fixed -> fixed(layoutDirectionValue())
+                        GenericPolicyChoice.TransformSystem -> transformSystem { if (it == LayoutDirection.Ltr) LayoutDirection.Rtl else LayoutDirection.Ltr }
+                    }
                 }
-            }
-            systemTheme {
-                when (systemThemePolicy) {
-                    GenericPolicyChoice.FollowSystem -> followSystem()
-                    GenericPolicyChoice.Fixed -> fixed(systemThemeValue())
-                    GenericPolicyChoice.TransformSystem -> transformSystem { if (it == SystemTheme.Dark) SystemTheme.Light else SystemTheme.Dark }
+
+                systemTheme {
+                    when (systemThemePolicy) {
+                        GenericPolicyChoice.FollowSystem -> followSystem()
+                        GenericPolicyChoice.Fixed -> fixed(systemThemeValue())
+                        GenericPolicyChoice.TransformSystem -> transformSystem { if (it == SystemTheme.Dark) SystemTheme.Light else SystemTheme.Dark }
+                    }
                 }
-            }
-            localeList {
-                when (localePolicy) {
-                    GenericPolicyChoice.FollowSystem -> followSystem()
-                    GenericPolicyChoice.Fixed -> fixed(localeValue())
-                    GenericPolicyChoice.TransformSystem -> transformSystem { localeValue() }
+
+                localeList {
+                    when (localePolicy) {
+                        GenericPolicyChoice.FollowSystem -> followSystem()
+                        GenericPolicyChoice.Fixed -> fixed(localeValue())
+                        GenericPolicyChoice.TransformSystem -> transformSystem { localeValue() }
+                    }
                 }
-            }
-            windowInsets {
-                when (insetsPolicy) {
-                    InsetsPolicyChoice.FollowSystem -> followSystem(insetsValue())
-                    InsetsPolicyChoice.Fixed -> fixed(insetsValue())
-                    InsetsPolicyChoice.TransformSystem -> transformSystem(insetsValue()) { system ->
-                        system.copy(
-                            statusBars = system.statusBars.copy(top = system.statusBars.top + insetTop, bottom = system.statusBars.bottom + insetBottom),
-                            systemBars = system.systemBars.copy(top = system.systemBars.top + insetTop, bottom = system.systemBars.bottom + insetBottom),
-                        )
+
+                windowInsets {
+                    when (insetsPolicy) {
+                        InsetsPolicyChoice.FollowSystem -> followSystem(insetsValue())
+                        InsetsPolicyChoice.Fixed -> fixed(insetsValue())
+                        InsetsPolicyChoice.TransformSystem -> transformSystem(insetsValue()) { system ->
+                            system.copy(
+                                statusBars = system.statusBars.copy(top = system.statusBars.top + insetTop, bottom = system.statusBars.bottom + insetBottom),
+                                systemBars = system.systemBars.copy(top = system.systemBars.top + insetTop, bottom = system.systemBars.bottom + insetBottom),
+                            )
+                        }
+                    }
+                }
+
+                interaction {
+                    when (interactionPolicy) {
+                        InteractionPolicyChoice.FollowSystem -> followSystem { touchSlop = configuredTouchSlop.dp }
+                        InteractionPolicyChoice.FollowCompose -> followCompose { touchSlop = configuredTouchSlop.dp }
+                        InteractionPolicyChoice.Fixed -> fixed(interactionTuningValue())
+                        InteractionPolicyChoice.TransformSystem -> transformSystem { it.copy(touchSlop = configuredTouchSlop) }
                     }
                 }
             }
-            viewConfiguration {
-                when (viewConfigurationPolicy) {
-                    ViewConfigurationPolicyChoice.FollowSystem -> followSystem { touchSlop = configuredTouchSlop.dp }
-                    ViewConfigurationPolicyChoice.FollowCompose -> followCompose { touchSlop = configuredTouchSlop.dp }
-                    ViewConfigurationPolicyChoice.Fixed -> fixed(viewConfigurationValue())
-                    ViewConfigurationPolicyChoice.TransformSystem -> transformSystem { it.copy(touchSlop = configuredTouchSlop) }
-                }
-            }
-        }
         }
     }
 
@@ -122,7 +129,7 @@ internal data class ConfigurationState(
         systemBars = HiroInsetsValues(top = insetTop, bottom = insetBottom),
     )
 
-    private fun viewConfigurationValue() = HiroViewConfigurationSnapshot(
+    private fun interactionTuningValue() = HiroInteractionTuning(
         longPressTimeoutMillis = 500L,
         doubleTapTimeoutMillis = 300L,
         doubleTapMinTimeMillis = 40L,
@@ -142,16 +149,16 @@ internal fun GenericPolicyChoice.label() = when (this) {
 }
 
 internal fun InsetsPolicyChoice.label() = when (this) {
-    InsetsPolicyChoice.FollowSystem -> "跟随系统（带初值）"
+    InsetsPolicyChoice.FollowSystem -> "跟随系统（带初始值）"
     InsetsPolicyChoice.Fixed -> "固定用户值"
-    InsetsPolicyChoice.TransformSystem -> "变换系统值（带初值）"
+    InsetsPolicyChoice.TransformSystem -> "变换系统值（带初始值）"
 }
 
-internal fun ViewConfigurationPolicyChoice.label() = when (this) {
-    ViewConfigurationPolicyChoice.FollowSystem -> "跟随 Android（补丁）"
-    ViewConfigurationPolicyChoice.FollowCompose -> "跟随 Compose（补丁）"
-    ViewConfigurationPolicyChoice.Fixed -> "固定完整快照"
-    ViewConfigurationPolicyChoice.TransformSystem -> "变换 Android 快照"
+internal fun InteractionPolicyChoice.label() = when (this) {
+    InteractionPolicyChoice.FollowSystem -> "跟随 Android（补丁）"
+    InteractionPolicyChoice.FollowCompose -> "跟随 Compose（补丁）"
+    InteractionPolicyChoice.Fixed -> "固定完整调校"
+    InteractionPolicyChoice.TransformSystem -> "变换 Android 调校"
 }
 
 internal fun Float.formatValue() = "%.2f".format(java.util.Locale.ROOT, this)

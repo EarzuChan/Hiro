@@ -1,4 +1,4 @@
-package me.earzuchan.hiro.compose.internal.glue
+package me.earzuchan.hiro.compose.internal.savable
 
 import android.os.Bundle
 import androidx.savedstate.serialization.SavedStateConfiguration
@@ -10,10 +10,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializerOrNull
 
 @OptIn(ExperimentalSerializationApi::class, InternalSerializationApi::class)
-internal class HiroKotlinSerializationSavableAdapter(
-    private val configuration: SavedStateConfiguration,
-    private val classLoader: ClassLoader,
-) {
+internal class HiroKotlinSerializationSavableAdapter(private val configuration: SavedStateConfiguration, private val classLoader: ClassLoader) {
     private val serializerCache = mutableMapOf<Class<*>, KSerializer<Any>?>()
 
     fun canSerialize(value: Any) = serializerFor(value.javaClass) != null

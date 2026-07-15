@@ -32,7 +32,7 @@ internal fun ConfigurationPreview() {
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val localeList = LocalLocaleList.current
-    val viewConfiguration = LocalViewConfiguration.current
+    val interactionTuning = LocalViewConfiguration.current
     val systemBars = WindowInsets.safeContent
     val dark = isSystemInDarkTheme()
     val colors = if (dark) darkColorScheme() else lightColorScheme()
@@ -47,8 +47,8 @@ internal fun ConfigurationPreview() {
                 Text("SystemTheme：${if (dark) "Dark" else "Light"}")
                 Text("Locale：${localeList.joinToString { it.toLanguageTag() }}")
                 Text("WindowInsets.safeContent：左 ${systemBars.getLeft(density, layoutDirection)} / 上 ${systemBars.getTop(density)} / 右 ${systemBars.getRight(density, layoutDirection)} / 下 ${systemBars.getBottom(density)} px")
-                Text("ViewConfiguration.touchSlop：${viewConfiguration.touchSlop.formatValue()} px")
-                Text("长按：${viewConfiguration.longPressTimeoutMillis}ms，双击：${viewConfiguration.doubleTapTimeoutMillis}ms")
+                Text("交互调校 touchSlop：${interactionTuning.touchSlop.formatValue()} px")
+                Text("长按：${interactionTuning.longPressTimeoutMillis}ms，双击：${interactionTuning.doubleTapTimeoutMillis}ms")
                 Box(
                     modifier = Modifier.size(64.dp).background(if (dark) Color(0xFFB9F6CA) else Color(0xFF00695C)),
                 )

@@ -3,9 +3,12 @@ package me.earzuchan.hiro.compose
 import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.LayoutDirection
+import me.earzuchan.hiro.compose.interaction.HiroInteractionPolicy
+import me.earzuchan.hiro.compose.interaction.HiroInteractionPolicyBuilder
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
+import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsPolicy
+import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsPolicyBuilder
 import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
-import me.earzuchan.hiro.compose.windowinsets.normalized
 
 /** 限制 Hiro Compose 配置 DSL 的接收者作用域 */
 @DslMarker
@@ -60,7 +63,7 @@ class HiroEnvironmentConfigurationBuilder internal constructor() {
     private var systemThemePolicy: HiroSystemValuePolicy<SystemTheme> = HiroSystemValuePolicy.FollowSystem()
     private var localeListPolicy: HiroSystemValuePolicy<LocaleList> = HiroSystemValuePolicy.FollowSystem()
     private var windowInsetsPolicy: HiroWindowInsetsPolicy = HiroWindowInsetsPolicy.FollowSystem(HiroWindowInsetsSnapshot.Zero)
-    private var viewConfigurationPolicy: HiroViewConfigurationPolicy = HiroViewConfigurationPolicy.FollowSystem()
+    private var interactionPolicy: HiroInteractionPolicy = HiroInteractionPolicy.FollowSystem()
 
     fun density(action: HiroSystemValuePolicyBuilder<Float>.() -> Unit) {
         densityPolicy = HiroSystemValuePolicyBuilder(densityPolicy, ::validScale).apply(action).build()
@@ -86,8 +89,8 @@ class HiroEnvironmentConfigurationBuilder internal constructor() {
         windowInsetsPolicy = HiroWindowInsetsPolicyBuilder(windowInsetsPolicy).apply(action).build()
     }
 
-    fun viewConfiguration(action: HiroViewConfigurationPolicyBuilder.() -> Unit) {
-        viewConfigurationPolicy = HiroViewConfigurationPolicyBuilder(viewConfigurationPolicy).apply(action).build()
+    fun interaction(action: HiroInteractionPolicyBuilder.() -> Unit) {
+        interactionPolicy = HiroInteractionPolicyBuilder(interactionPolicy).apply(action).build()
     }
 
     internal fun build() = HiroEnvironmentConfiguration(
@@ -97,7 +100,7 @@ class HiroEnvironmentConfigurationBuilder internal constructor() {
         systemThemePolicy = systemThemePolicy,
         localeListPolicy = localeListPolicy,
         windowInsetsPolicy = windowInsetsPolicy,
-        viewConfigurationPolicy = viewConfigurationPolicy,
+        interactionPolicy = interactionPolicy,
     )
 }
 
@@ -121,26 +124,6 @@ class HiroSystemValuePolicyBuilder<T> internal constructor(initial: HiroSystemVa
     internal fun build() = policy
 }
 
-/** 为窗口 Insets 选择系统跟随、固定或系统变换策略 */
-@HiroComposeConfigurationDsl
-class HiroWindowInsetsPolicyBuilder internal constructor(initial: HiroWindowInsetsPolicy) {
-    private var policy = initial
-
-    fun followSystem(initial: HiroWindowInsetsSnapshot = HiroWindowInsetsSnapshot.Zero) {
-        policy = HiroWindowInsetsPolicy.FollowSystem(initial.normalized())
-    }
-
-    fun fixed(snapshot: HiroWindowInsetsSnapshot) {
-        policy = HiroWindowInsetsPolicy.Fixed(snapshot.normalized())
-    }
-
-    fun transformSystem(initial: HiroWindowInsetsSnapshot = HiroWindowInsetsSnapshot.Zero, transformer: (HiroWindowInsetsSnapshot) -> HiroWindowInsetsSnapshot) {
-        policy = HiroWindowInsetsPolicy.TransformSystem(initial.normalized(), transformer)
-    }
-
-    internal fun build() = policy
-}
-
 internal data class HiroEnvironmentConfiguration(
     val densityPolicy: HiroSystemValuePolicy<Float>,
     val fontScalePolicy: HiroSystemValuePolicy<Float>,
@@ -148,7 +131,7 @@ internal data class HiroEnvironmentConfiguration(
     val systemThemePolicy: HiroSystemValuePolicy<SystemTheme>,
     val localeListPolicy: HiroSystemValuePolicy<LocaleList>,
     val windowInsetsPolicy: HiroWindowInsetsPolicy,
-    val viewConfigurationPolicy: HiroViewConfigurationPolicy,
+    val interactionPolicy: HiroInteractionPolicy,
 )
 
 internal sealed interface HiroSystemValuePolicy<T> {
@@ -164,28 +147,6 @@ internal sealed interface HiroSystemValuePolicy<T> {
 
     class TransformSystem<T>(private val transformer: (T) -> T, private val normalize: (T) -> T) : HiroSystemValuePolicy<T> {
         override fun resolve(system: T) = normalize(transformer(system))
-    }
-}
-
-internal sealed interface HiroWindowInsetsPolicy {
-    val initial: HiroWindowInsetsSnapshot
-    val readsSystem: Boolean
-    fun resolve(system: HiroWindowInsetsSnapshot): HiroWindowInsetsSnapshot
-
-    class FollowSystem(override val initial: HiroWindowInsetsSnapshot) : HiroWindowInsetsPolicy {
-        override val readsSystem = true
-        override fun resolve(system: HiroWindowInsetsSnapshot) = system.normalized()
-    }
-
-    class Fixed(private val snapshot: HiroWindowInsetsSnapshot) : HiroWindowInsetsPolicy {
-        override val initial = snapshot
-        override val readsSystem = false
-        override fun resolve(system: HiroWindowInsetsSnapshot) = snapshot
-    }
-
-    class TransformSystem(override val initial: HiroWindowInsetsSnapshot, private val transformer: (HiroWindowInsetsSnapshot) -> HiroWindowInsetsSnapshot) : HiroWindowInsetsPolicy {
-        override val readsSystem = true
-        override fun resolve(system: HiroWindowInsetsSnapshot) = transformer(system).normalized()
     }
 }
 

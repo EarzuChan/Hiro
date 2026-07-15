@@ -53,7 +53,7 @@ fun ArchitecturePage(title: String, activityViewModelId: String, rootViewModelId
         StatusText("$title / Lifecycle $lifecycleState", Color(0xFFF9FAFB), 22)
         StatusText("页面 VM ${viewModel.instanceId} / ${viewModel.creationThread}", Color(0xFFC4B5FD))
         StatusText("SavedStateHandle 计数 $count", Color(0xFF86EFAC))
-        ActionButton("向页面 VM 计数加值", viewModel::increment)
+        ActionButton("向页面 VM 计数增值", viewModel::increment)
         onNavigate?.let { ActionButton("进入详情页", it) }
         onBack?.let { ActionButton("返回并清理详情 VM", it) }
     }

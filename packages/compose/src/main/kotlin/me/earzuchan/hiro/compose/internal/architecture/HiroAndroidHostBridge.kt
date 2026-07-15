@@ -1,6 +1,5 @@
 package me.earzuchan.hiro.compose.internal.architecture
 
-import android.os.Looper
 import android.util.Log
 import android.view.View
 import androidx.activity.OnBackPressedCallback
@@ -11,6 +10,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
+import me.earzuchan.hiro.compose.internal.util.checkMainThreadForHiroCompose
 
 internal class HiroAndroidHostBridge(private val savedStateTransport: HiroSavedStateTransport, private val savedStateKey: String?, private val onLifecycleChanged: () -> Unit, private val onNavigationBack: () -> Boolean) : AutoCloseable {
     private var view: View? = null
@@ -35,7 +35,7 @@ internal class HiroAndroidHostBridge(private val savedStateTransport: HiroSavedS
     }
 
     fun attach(view: View) {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         check(this.view == null) { "Hiro Android 宿主桥已经挂载" }
 
         this.view = view
@@ -59,17 +59,20 @@ internal class HiroAndroidHostBridge(private val savedStateTransport: HiroSavedS
         else Log.w(TAG, "HiroComposeView 没有稳定 SavedState key，本次只能保存内存状态；请设置稳定 View ID 或显式 key")
 
         if (lifecycleOwner == null) Log.w(TAG, "宿主没有 LifecycleOwner，Hiro Compose 将仅使用 View 可见性驱动生命周期")
+        if (lifecycleOwner == null || navigationBackOwner == null || savedStateOwner == null) {
+            Log.w(TAG, "宿主没有提供完整的 AndroidX ViewTree Owner；通常建议从 ComponentActivity 调用 setHiroComposeContent，手动宿主则应自行安装对应 Owner")
+        }
         onLifecycleChanged()
     }
 
     fun updateNavigationBackHandling(enabled: Boolean) {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
 
         navigationBackCallback.isEnabled = enabled && view != null
     }
 
     override fun close() {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
 
         lifecycleOwner?.lifecycle?.removeObserver(lifecycleObserver)
         navigationBackCallback.isEnabled = false
@@ -83,6 +86,4 @@ internal class HiroAndroidHostBridge(private val savedStateTransport: HiroSavedS
         savedStateRegistryOwner = null
         savedStateProviderKey = null
     }
-
-    private fun checkMainThread() = check(Looper.myLooper() == Looper.getMainLooper()) { "Hiro Android 宿主桥只能在安卓主线程操作" }
 }

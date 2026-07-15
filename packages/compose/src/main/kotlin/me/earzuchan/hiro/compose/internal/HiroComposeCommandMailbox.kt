@@ -35,10 +35,6 @@ internal class HiroComposeCommandMailbox {
 
 internal sealed interface HiroComposeCommand {
     data class SetContent(val content: @Composable () -> Unit) : HiroComposeCommand
-    data object ApplyEnvironment : HiroComposeCommand
-    data object ApplyViewport : HiroComposeCommand
-    data object ApplyWindowInsets : HiroComposeCommand
-    data object ApplyInputMode : HiroComposeCommand
     data class PointerEvent(val event: HiroComposePointerEvent) : HiroComposeCommand
     data class MoveLifecycle(val state: Lifecycle.State) : HiroComposeCommand
     data object CancelPointerInput : HiroComposeCommand

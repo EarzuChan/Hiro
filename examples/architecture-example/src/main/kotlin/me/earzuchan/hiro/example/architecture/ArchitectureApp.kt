@@ -1,11 +1,13 @@
 package me.earzuchan.hiro.example.architecture
 
+import android.os.Bundle
 import android.util.Log
+import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -16,20 +18,66 @@ import androidx.lifecycle.compose.currentStateAsState
 import androidx.lifecycle.compose.rememberLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
-import androidx.navigation3.runtime.*
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.compose.LocalSavedStateRegistryOwner
+import me.earzuchan.hiro.compose.hiroComposeConfiguration
+import me.earzuchan.hiro.compose.savable.hiroSavableStateSeDes
+import me.earzuchan.hiro.compose.setHiroComposeContent
 import me.earzuchan.hiro.example.architecture.navigation.Detail
 import me.earzuchan.hiro.example.architecture.navigation.Home
-import me.earzuchan.hiro.example.architecture.savable.AutomaticSavableKey
-import me.earzuchan.hiro.example.architecture.savable.AutomaticSavableObjectKey
-import me.earzuchan.hiro.example.architecture.savable.ThirdPartySavableKey
 import me.earzuchan.hiro.example.architecture.ui.ActionButton
 import me.earzuchan.hiro.example.architecture.ui.ArchitecturePage
 import me.earzuchan.hiro.example.architecture.ui.StatusText
 import me.earzuchan.hiro.example.architecture.viewmodel.ArchitectureViewModel
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.compose.viewmodel.koinViewModel
+import java.util.concurrent.atomic.AtomicBoolean
 
+internal data class ViewModelIdentity(val instanceId: String, val creationThread: String, val count: Int)
+
+data class ThirdPartyCounter(val count: Int)
+
+class ArchitectureActivity : ComponentActivity() {
+    private val activityViewModel by viewModel<ArchitectureViewModel>()
+    private val recreationRequested = AtomicBoolean()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        activityViewModel.increment()
+        val activityIdentity = ViewModelIdentity(instanceId = activityViewModel.instanceId, creationThread = activityViewModel.creationThread, count = activityViewModel.count.value)
+
+        Log.i(ArchitectureViewModel.TAG, "ACTIVITY_VM id=${activityIdentity.instanceId} thread=${activityIdentity.creationThread} count=${activityIdentity.count}")
+
+        setHiroComposeContent(hiroComposeConfiguration {
+            savableState {
+                val sedesKey = "count"
+
+                addSeDes(
+                    hiroSavableStateSeDes<ThirdPartyCounter>(
+                        serialize = { counter -> Bundle().apply { putInt(sedesKey, counter.count) } },
+                        deserialize = { state -> ThirdPartyCounter(state.getInt(sedesKey)) }
+                    )
+                )
+            }
+        }) { ArchitectureApp(activityIdentity = activityIdentity, onRecreateActivity = ::requestRecreation) }
+    }
+
+    override fun onDestroy() {
+        Log.i(ArchitectureViewModel.TAG, "ACTIVITY_DESTROY changingConfigurations=$isChangingConfigurations thread=${Thread.currentThread().name}")
+
+        super.onDestroy()
+    }
+
+    private fun requestRecreation() {
+        if (recreationRequested.compareAndSet(false, true)) runOnUiThread(::recreate)
+    }
+}
 
 @Composable
 internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActivity: () -> Unit) {
@@ -48,6 +96,7 @@ internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActi
 
     LaunchedEffect(rootViewModel) {
         check(Thread.currentThread().name != "main") { "Hiro Compose 根内容错误地运行在 Android 主线程" }
+
         Log.i(ArchitectureViewModel.TAG, "HIRO_ROOT vm=${rootViewModel.instanceId} thread=${Thread.currentThread().name} store=${System.identityHashCode(rootStoreOwner)} savedState=${System.identityHashCode(rootSavedStateOwner)}")
     }
 
@@ -63,7 +112,7 @@ internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActi
         StatusText("根 Lifecycle $rootLifecycleState / 子 Lifecycle ${childLifecycleOwner.lifecycle.currentState}", Color(0xFFA7F3D0))
         StatusText("返回栈 ${backStack.size} / Saveable $savableCounter", Color.White)
 
-        ActionButton("向根 VM 与 Saveable 加值") {
+        ActionButton("向根 VM 与 Saveable 增值") {
             rootViewModel.increment()
             savableCounter++
         }
@@ -75,10 +124,7 @@ internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActi
         NavDisplay(
             backStack = backStack,
             modifier = Modifier.fillMaxWidth().weight(1f),
-            entryDecorators = listOf(
-                rememberSaveableStateHolderNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator(),
-            ),
+            entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()), // CHECK：什么玩意
             onBack = popBackStack,
             entryProvider = entryProvider({ NavEntry(it) { page -> StatusText("未知页面：$page", Color.Red) } }) {
                 entry<Home> {
@@ -105,27 +151,15 @@ internal fun ArchitectureApp(activityIdentity: ViewModelIdentity, onRecreateActi
 
 @Composable
 private fun SavableStateChecks() {
-    val automaticObjectHolder = rememberSaveableStateHolder()
-    val automaticHolder = rememberSaveableStateHolder()
-    val thirdPartyHolder = rememberSaveableStateHolder()
+    var normalCounter by rememberSaveable { mutableIntStateOf(0) }
+    var ultimateCounter by rememberSaveable { mutableStateOf(ThirdPartyCounter(0)) }
 
-    automaticObjectHolder.SaveableStateProvider(AutomaticSavableObjectKey) {
-        automaticHolder.SaveableStateProvider(AutomaticSavableKey("architecture-example")) {
-            var automaticCount by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(normalCounter, ultimateCounter) { Log.i(ArchitectureViewModel.TAG, "HIRO_SEDES normal=$normalCounter ultimate=${ultimateCounter.count} thread=${Thread.currentThread().name}") }
 
-            thirdPartyHolder.SaveableStateProvider(ThirdPartySavableKey("architecture-example")) {
-                var thirdPartyCount by rememberSaveable { mutableIntStateOf(0) }
+    StatusText("普通 $normalCounter / 特制 SeDes ${ultimateCounter.count}", Color(0xFFF0ABFC))
 
-                LaunchedEffect(automaticCount, thirdPartyCount) {
-                    Log.i(ArchitectureViewModel.TAG, "HIRO_SEDES automatic=$automaticCount thirdParty=$thirdPartyCount thread=${Thread.currentThread().name}")
-                }
-
-                StatusText("KtSer $automaticCount / 第三方 Codec $thirdPartyCount", Color(0xFFF0ABFC))
-                ActionButton("向两类 SeDes 加值") {
-                    automaticCount++
-                    thirdPartyCount++
-                }
-            }
-        }
+    ActionButton("向两类 SeDes 增值") {
+        normalCounter++
+        ultimateCounter = ThirdPartyCounter(ultimateCounter.count + 1)
     }
 }

@@ -4,36 +4,36 @@ import androidx.savedstate.serialization.SavedStateConfiguration
 import me.earzuchan.hiro.compose.HiroComposeConfigurationDsl
 import kotlin.reflect.KClass
 
-/** Hiro Compose 单个 Scene 使用的不可变 SavableState 编解码配置 */
-class HiroSavableStateConfiguration private constructor(val kotlinSerializationConfiguration: SavedStateConfiguration, private val codecsByType: Map<KClass<*>, HiroSavableStateCodec<*>>, private val codecsById: Map<String, HiroSavableStateCodec<*>>) {
+/** Hiro Compose 使用的不可变 SavableState 编解码配置 */
+class HiroSavableStateConfiguration private constructor(val kotlinSerializationConfiguration: SavedStateConfiguration, private val seDesByType: Map<KClass<*>, HiroSavableStateSeDes<*>>, private val seDesByTypeName: Map<String, HiroSavableStateSeDes<*>>) {
     /** 构造一个新的不可变配置 */
     @HiroComposeConfigurationDsl
     class Builder internal constructor(base: HiroSavableStateConfiguration? = null) {
         var kotlinSerializationConfiguration: SavedStateConfiguration = base?.kotlinSerializationConfiguration ?: SavedStateConfiguration.DEFAULT
 
-        private val codecsByType = linkedMapOf<KClass<*>, HiroSavableStateCodec<*>>().apply { base?.let { putAll(it.codecsByType) } }
-        private val codecsById = linkedMapOf<String, HiroSavableStateCodec<*>>().apply { base?.let { putAll(it.codecsById) } }
+        private val seDesByType = linkedMapOf<KClass<*>, HiroSavableStateSeDes<*>>().apply { base?.let { putAll(it.seDesByType) } }
+        private val seDesByTypeName = linkedMapOf<String, HiroSavableStateSeDes<*>>().apply { base?.let { putAll(it.seDesByTypeName) } }
 
-        /** 注册一个精确类型 Codec，同一类型和同一 typeId 均只允许注册一次 */
-        fun addCodec(codec: HiroSavableStateCodec<*>): Builder = apply {
-            require(codec.typeId.isNotBlank()) { "Hiro SavableState Codec 的 typeId 不能为空" }
-            require(codec.type !in codecsByType) { "Hiro SavableState 类型重复注册：${codec.type.qualifiedName}" }
-            require(codec.typeId !in codecsById) { "Hiro SavableState typeId 重复注册：${codec.typeId}" }
+        /** 为一个精确类型注册特制 SeDes，同一类型只允许注册一次 */
+        fun addSeDes(seDes: HiroSavableStateSeDes<*>): Builder = apply {
+            val typeName = seDes.type.java.name
+            require(seDes.type !in seDesByType) { "Hiro SavableState SeDes 类型重复注册：$typeName" }
+            require(typeName !in seDesByTypeName) { "Hiro SavableState SeDes 类名重复注册：$typeName" }
 
-            codecsByType[codec.type] = codec
-            codecsById[codec.typeId] = codec
+            seDesByType[seDes.type] = seDes
+            seDesByTypeName[typeName] = seDes
         }
 
         internal fun build() = HiroSavableStateConfiguration(
             kotlinSerializationConfiguration = kotlinSerializationConfiguration,
-            codecsByType = codecsByType.toMap(),
-            codecsById = codecsById.toMap(),
+            seDesByType = seDesByType.toMap(),
+            seDesByTypeName = seDesByTypeName.toMap(),
         )
     }
 
-    internal fun codecFor(type: KClass<*>) = codecsByType[type]
+    internal fun seDesFor(type: KClass<*>) = seDesByType[type]
 
-    internal fun codecFor(typeId: String) = codecsById[typeId]
+    internal fun seDesFor(typeName: String) = seDesByTypeName[typeName]
 
     internal fun toBuilder() = Builder(this)
 

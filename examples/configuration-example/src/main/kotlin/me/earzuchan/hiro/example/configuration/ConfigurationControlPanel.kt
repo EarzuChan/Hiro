@@ -35,7 +35,7 @@ internal fun ConfigurationControlPanel(onConfigurationChange: (ConfigurationStat
     Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), Arrangement.spacedBy(10.dp)) {
         Text("Hiro 配置策略控制台", style = MaterialTheme.typography.titleLarge)
         Text("解析规则：固定值直接生效；跟随策略读取所选基线；变换策略在系统值上应用用户变换")
-        Text("ViewConfiguration 的 Android 基线会以 Compose 缺省补齐，再应用用户补丁")
+        Text("交互调校的 Android 基线会以 Compose 缺省补齐，再应用用户补丁")
         Text("本面板每次调节都会用当前选择重建预览 HiroComposeView")
 
         HorizontalDivider()
@@ -119,9 +119,9 @@ internal fun ConfigurationControlPanel(onConfigurationChange: (ConfigurationStat
             onBottomChanged = { commit(state.copy(insetBottom = it)) },
         )
 
-        ViewConfigurationSection(
+        InteractionTuningSection(
             state = state,
-            onPolicySelected = { commit(state.copy(viewConfigurationPolicy = it)) },
+            onPolicySelected = { commit(state.copy(interactionPolicy = it)) },
             onTouchSlopChanged = { commit(state.copy(touchSlop = it)) },
         )
     }
@@ -152,16 +152,16 @@ private fun InsetsPolicySection(state: ConfigurationState, onPolicySelected: (In
 }
 
 @Composable
-private fun ViewConfigurationSection(state: ConfigurationState, onPolicySelected: (ViewConfigurationPolicyChoice) -> Unit, onTouchSlopChanged: (Float) -> Unit) {
-    Text("ViewConfiguration · 当前：${state.viewConfigurationPolicy.label()}", style = MaterialTheme.typography.titleMedium)
+private fun InteractionTuningSection(state: ConfigurationState, onPolicySelected: (InteractionPolicyChoice) -> Unit, onTouchSlopChanged: (Float) -> Unit) {
+    Text("交互调校 · 当前：${state.interactionPolicy.label()}", style = MaterialTheme.typography.titleMedium)
     PolicyRadioRow(
         choices = listOf(
-            ViewConfigurationPolicyChoice.FollowSystem to ViewConfigurationPolicyChoice.FollowSystem.label(),
-            ViewConfigurationPolicyChoice.FollowCompose to ViewConfigurationPolicyChoice.FollowCompose.label(),
-            ViewConfigurationPolicyChoice.Fixed to ViewConfigurationPolicyChoice.Fixed.label(),
-            ViewConfigurationPolicyChoice.TransformSystem to ViewConfigurationPolicyChoice.TransformSystem.label(),
+            InteractionPolicyChoice.FollowSystem to InteractionPolicyChoice.FollowSystem.label(),
+            InteractionPolicyChoice.FollowCompose to InteractionPolicyChoice.FollowCompose.label(),
+            InteractionPolicyChoice.Fixed to InteractionPolicyChoice.Fixed.label(),
+            InteractionPolicyChoice.TransformSystem to InteractionPolicyChoice.TransformSystem.label(),
         ),
-        selected = state.viewConfigurationPolicy,
+        selected = state.interactionPolicy,
         onSelected = onPolicySelected,
     )
     Slider(value = state.touchSlop, onValueChange = onTouchSlopChanged, valueRange = 0f..48f, steps = 47)

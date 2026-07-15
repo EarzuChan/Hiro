@@ -20,7 +20,7 @@ import androidx.navigationevent.NavigationEventDispatcherOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
-import me.earzuchan.hiro.compose.internal.glue.HiroSavableStateConfigurationOwner
+import me.earzuchan.hiro.compose.internal.savable.HiroSavableStateConfigurationOwner
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 
 @OptIn(InternalComposeUiApi::class)

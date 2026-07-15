@@ -2,26 +2,20 @@ package me.earzuchan.hiro.compose
 
 import android.content.Context
 import android.content.res.Configuration
-import android.os.Looper
 import android.util.AttributeSet
 import android.util.Log
 import android.view.MotionEvent
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
 import me.earzuchan.hiro.compose.internal.HiroComposeHostSession
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
-import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
+import me.earzuchan.hiro.compose.internal.util.checkMainThreadForHiroCompose
+import me.earzuchan.hiro.compose.internal.util.name
+import me.earzuchan.hiro.compose.internal.util.shouldLogTouchEvent
 
-class HiroComposeView private constructor(
-    context: Context,
-    attrs: AttributeSet?,
-    defStyleAttr: Int,
-    private val configuration: HiroComposeConfiguration,
-    private val explicitSavedStateKey: String?,
-) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
+class HiroComposeView private constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int, private val configuration: HiroComposeConfiguration, private val explicitSavedStateKey: String?) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
     @JvmOverloads
-    constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) : this(
+    constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) : this( // TIPS：这是特制的
         context = context,
         attrs = attrs,
         defStyleAttr = defStyleAttr,
@@ -38,11 +32,6 @@ class HiroComposeView private constructor(
         explicitSavedStateKey = savedStateKey,
     )
 
-    constructor(context: Context, savableStateConfiguration: HiroSavableStateConfiguration) : this(
-        context = context,
-        configuration = hiroComposeConfiguration { savableState(savableStateConfiguration) },
-    )
-
     private val savedStateTransport = HiroSavedStateTransport()
     private var content: (@Composable () -> Unit)? = null
     private var activeSession: HiroComposeHostSession? = null
@@ -56,14 +45,13 @@ class HiroComposeView private constructor(
 
     init {
         require(explicitSavedStateKey == null || explicitSavedStateKey.isNotBlank()) { "HiroComposeView 的 SavedState key 不能为空" }
-        layoutParams = ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
         isFocusable = true
         isFocusableInTouchMode = true
         Log.d(TAG, "被创建")
     }
 
     fun setContent(content: @Composable () -> Unit) {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         check(!closed) { "HiroComposeView 已经永久关闭，不能再设置 Compose 内容" }
         this.content = content
         activeSession?.setContent(content)
@@ -72,7 +60,7 @@ class HiroComposeView private constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         check(!closed) { "已经永久关闭的 HiroComposeView 不能重新挂载" }
         check(activeSession == null) { "HiroComposeView 出现重复宿主会话" }
 
@@ -98,7 +86,7 @@ class HiroComposeView private constructor(
     }
 
     override fun onDetachedFromWindow() {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         disposeActiveSession()
         Log.d(TAG, "已从窗口脱离并销毁宿主会话")
         super.onDetachedFromWindow()
@@ -107,6 +95,11 @@ class HiroComposeView private constructor(
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
         activeSession?.synchronizeLifecycle()
+    }
+
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        activeSession?.updateEnvironment()
     }
 
     override fun onVisibilityChanged(changedView: android.view.View, visibility: Int) {
@@ -139,7 +132,7 @@ class HiroComposeView private constructor(
     }
 
     override fun close() {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         if (closed) return
         closed = true
         disposeActiveSession()
@@ -156,29 +149,8 @@ class HiroComposeView private constructor(
         if (savedStateKeyResolved) return resolvedSavedStateKey
 
         resolvedSavedStateKey = explicitSavedStateKey ?: id.takeIf { it != NO_ID }?.let { "view-id:$it" }
+
         savedStateKeyResolved = true
         return resolvedSavedStateKey
     }
-
-    private fun checkMainThread() = check(Looper.myLooper() == Looper.getMainLooper()) { "HiroComposeView 只能在安卓主线程操作" }
-}
-
-private fun MotionEvent.shouldLogTouchEvent() = when (actionMasked) {
-    MotionEvent.ACTION_DOWN,
-    MotionEvent.ACTION_UP,
-    MotionEvent.ACTION_POINTER_DOWN,
-    MotionEvent.ACTION_POINTER_UP,
-    MotionEvent.ACTION_CANCEL,
-    MotionEvent.ACTION_OUTSIDE -> true
-    else -> false
-}
-
-private fun MotionEvent.name() = when (actionMasked) {
-    MotionEvent.ACTION_DOWN -> "按下"
-    MotionEvent.ACTION_UP -> "抬起"
-    MotionEvent.ACTION_POINTER_DOWN -> "多指按下"
-    MotionEvent.ACTION_POINTER_UP -> "多指抬起"
-    MotionEvent.ACTION_CANCEL -> "取消"
-    MotionEvent.ACTION_OUTSIDE -> "越界"
-    else -> "其他"
 }

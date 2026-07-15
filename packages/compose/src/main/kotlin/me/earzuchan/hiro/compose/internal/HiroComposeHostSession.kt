@@ -1,6 +1,5 @@
 package me.earzuchan.hiro.compose.internal
 
-import android.os.Looper
 import android.view.MotionEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.input.InputMode
@@ -14,6 +13,7 @@ import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputModeFiddler
 import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputRouter
 import me.earzuchan.hiro.compose.internal.input.HiroComposeInputSink
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
+import me.earzuchan.hiro.compose.internal.util.checkMainThreadForHiroCompose
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroWindowInsetsFiddlerForAndroid
 import me.earzuchan.hiro.skia.HiroSkiaLayer
 
@@ -56,12 +56,12 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
     private var renderActive: Boolean? = null
 
     init {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         layer.renderDelegate = renderController
     }
 
     fun attach() {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         check(!closed) { "Hiro Compose 宿主会话已经关闭" }
         check(!attached) { "Hiro Compose 宿主会话已经挂载" }
         attached = true
@@ -79,13 +79,13 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
     }
 
     fun setContent(content: @Composable () -> Unit) {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         check(!closed) { "Hiro Compose 宿主会话已经关闭" }
         check(renderController.setContent(content)) { "Hiro Compose 内容无法投递到渲染线程" }
     }
 
     fun updateEnvironment() {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         if (closed) return
 
         renderController.updateEnvironment(environmentReader.read())
@@ -101,7 +101,7 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
     fun dispatchTouchEvent(event: MotionEvent): Boolean = if (closed) false else inputRouter.dispatchTouchEvent(event)
 
     override fun close() {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         if (closed) return
         closed = true
 
@@ -124,7 +124,7 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
     }
 
     private fun synchronizeLifecycle(force: Boolean) {
-        checkMainThread()
+        checkMainThreadForHiroCompose()
         if (closed || layer.surfaceView == null) return
 
         val hostState = hostBridge.lifecycleState
@@ -154,6 +154,4 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
 
     private fun requestNavigationBackHandlingFromRenderThread(enabled: Boolean): Boolean = if (closed) false
     else view.post { if (!closed) hostBridge.updateNavigationBackHandling(enabled) }
-
-    private fun checkMainThread() = check(Looper.myLooper() == Looper.getMainLooper()) { "Hiro Compose 宿主会话只能在安卓主线程操作" }
 }

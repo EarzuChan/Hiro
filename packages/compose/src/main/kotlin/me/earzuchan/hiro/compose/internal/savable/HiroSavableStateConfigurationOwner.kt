@@ -1,4 +1,4 @@
-package me.earzuchan.hiro.compose.internal.glue
+package me.earzuchan.hiro.compose.internal.savable
 
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 

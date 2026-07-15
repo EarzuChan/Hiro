@@ -9,21 +9,16 @@ import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
+import me.earzuchan.hiro.compose.internal.util.logText
 import me.earzuchan.hiro.compose.windowinsets.HiroInsetsValues
 import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
 
-internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (HiroWindowInsetsSnapshot) -> Unit) {
+internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (HiroWindowInsetsSnapshot) -> Unit) : AutoCloseable {
     private var hostView: View? = null
     private var lastSnapshot: HiroWindowInsetsSnapshot? = null
 
     companion object {
         private const val TAG = "HiroWindowInsetsFiddler"
-    }
-
-    private val attachStateListener = object : View.OnAttachStateChangeListener {
-        override fun onViewAttachedToWindow(view: View) = requestApplyInsets(view)
-
-        override fun onViewDetachedFromWindow(view: View) {}
     }
 
     private val insetsListener = OnApplyWindowInsetsListener { _, insets ->
@@ -39,15 +34,9 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (Hir
     }
 
     fun attach(view: View) {
-        if (hostView === view) {
-            requestApplyInsets(view)
-            return
-        }
-
-        close()
-
+        check(hostView == null) { "Hiro Android 窗口 Insets 桥已经挂载" }
+        
         hostView = view
-        view.addOnAttachStateChangeListener(attachStateListener)
         ViewCompat.setOnApplyWindowInsetsListener(view, insetsListener)
         ViewCompat.setWindowInsetsAnimationCallback(view, animationCallback)
 
@@ -57,24 +46,17 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (Hir
         requestApplyInsets(view)
     }
 
-    fun detach(view: View) {
-        if (hostView !== view) return
-
-        close()
-    }
-
     fun requestApplyInsets() {
         hostView?.let(::requestApplyInsets)
     }
 
-    fun close() {
+    override fun close() {
         val view = hostView ?: return
 
         Log.d(TAG, "已卸载")
 
         ViewCompat.setWindowInsetsAnimationCallback(view, null)
         ViewCompat.setOnApplyWindowInsetsListener(view, null)
-        view.removeOnAttachStateChangeListener(attachStateListener)
         hostView = null
     }
 
@@ -108,8 +90,6 @@ private fun WindowInsetsCompat.toHiroSnapshot() = HiroWindowInsetsSnapshot(
 )
 
 private fun AndroidXInsets.toHiroInsetsValues() = HiroInsetsValues(left, top, right, bottom)
-
-private fun HiroInsetsValues.logText() = "(${left},${top},${right},${bottom})"
 
 private fun AndroidRect.toComposeRect() = Rect(
     left = left.toFloat(),

@@ -1,4 +1,4 @@
-package me.earzuchan.hiro.compose.internal.glue
+package me.earzuchan.hiro.compose.internal.savable
 
 import android.os.Binder
 import android.os.Bundle
@@ -21,16 +21,13 @@ import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.snapshots.SnapshotMutableState
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.core.util.size
-import me.earzuchan.hiro.compose.savable.HiroSavableStateCodec
+import me.earzuchan.hiro.compose.savable.HiroSavableStateSeDes
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 import java.io.Serializable
 import java.util.IdentityHashMap
 import java.util.LinkedHashMap
 
-internal class HiroSavableStateBundleCodec(
-    private val configuration: HiroSavableStateConfiguration,
-    private val classLoader: ClassLoader,
-) {
+internal class HiroSavableStateBundleSeDes(private val configuration: HiroSavableStateConfiguration, private val classLoader: ClassLoader) {
     private val kotlinSerialization = HiroKotlinSerializationSavableAdapter(
         configuration = configuration.kotlinSerializationConfiguration,
         classLoader = classLoader,
@@ -39,12 +36,26 @@ internal class HiroSavableStateBundleCodec(
     fun canBeSaved(value: Any?): Boolean = canBeSaved(value, IdentityHashMap())
 
     fun encodeRegistry(values: Map<String, List<Any?>>) = Bundle().apply {
+        putInt(FORMAT_VERSION_KEY, CURRENT_FORMAT_VERSION)
+        putBundle(PAYLOAD_KEY, encodeRegistryPayload(values))
+    }
+
+    fun decodeRegistry(bundle: Bundle): Map<String, List<Any?>> {
+        bundle.classLoader = classLoader
+        if (!bundle.containsKey(FORMAT_VERSION_KEY) || !bundle.containsKey(PAYLOAD_KEY)) return decodeRegistryPayload(bundle)
+
+        val version = bundle.getInt(FORMAT_VERSION_KEY, -1)
+        check(version == CURRENT_FORMAT_VERSION) { "Hiro 保存状态格式版本不受支持：$version" }
+        return decodeRegistryPayload(checkNotNull(bundle.getBundle(PAYLOAD_KEY)) { "Hiro 保存状态缺少格式负载" })
+    }
+
+    private fun encodeRegistryPayload(values: Map<String, List<Any?>>) = Bundle().apply {
         values.forEach { (key, entryValues) ->
             putParcelableArrayList(key, ArrayList(entryValues.map(::encodeValue)))
         }
     }
 
-    fun decodeRegistry(bundle: Bundle): Map<String, List<Any?>> {
+    private fun decodeRegistryPayload(bundle: Bundle): Map<String, List<Any?>> {
         bundle.classLoader = classLoader
 
         return buildMap {
@@ -57,6 +68,7 @@ internal class HiroSavableStateBundleCodec(
 
     private fun canBeSaved(value: Any?, visited: IdentityHashMap<Any, Boolean>): Boolean {
         if (value == null) return true
+        if (configuration.seDesFor(value::class) != null) return true
         if (value is Function<*> && value is Serializable) return false
         if (value is Binder || value is Size || value is SizeF || value is Parcelable) return true
 
@@ -85,7 +97,6 @@ internal class HiroSavableStateBundleCodec(
         }
 
         if (value is Serializable) return true
-        if (configuration.codecFor(value::class) != null) return true
         return kotlinSerialization.canSerialize(value)
     }
 
@@ -93,6 +104,14 @@ internal class HiroSavableStateBundleCodec(
         require(canBeSaved(value)) { "Hiro 无法将状态写入 Android SavedState：$value" }
 
         return Bundle().apply {
+            val specialSeDes = value?.let { configuration.seDesFor(it::class) }
+            if (specialSeDes != null) {
+                putInt(TYPE, TYPE_SEDES)
+                putString(CLASS_NAME, specialSeDes.type.java.name)
+                putBundle(VALUE, specialSeDes.serializeAny(value))
+                return@apply
+            }
+
             when (value) {
                 null -> putInt(TYPE, TYPE_NULL)
 
@@ -204,7 +223,7 @@ internal class HiroSavableStateBundleCodec(
 
             TYPE_SERIALIZABLE -> encoded.getSerializable(VALUE)
 
-            TYPE_CUSTOM -> encoded.decodeCustomValue()
+            TYPE_SEDES -> encoded.decodeSeDesValue()
 
             TYPE_KOTLIN_SERIALIZED -> kotlinSerialization.deserialize(
                 className = checkNotNull(encoded.getString(CLASS_NAME)) { "Hiro Kotlin 序列化状态缺少类名" },
@@ -216,27 +235,18 @@ internal class HiroSavableStateBundleCodec(
     }
 
     private fun Bundle.encodeExtendedValue(value: Any) {
-        val customCodec = configuration.codecFor(value::class)
-
-        if (customCodec != null) {
-            putInt(TYPE, TYPE_CUSTOM)
-            putString(TYPE_ID, customCodec.typeId)
-            putBundle(VALUE, customCodec.serializeAny(value))
-            return
-        }
-
         check(kotlinSerialization.canSerialize(value)) { "Hiro 保存状态编码器遗漏了已允许类型：${value::class.java.name}" }
         putInt(TYPE, TYPE_KOTLIN_SERIALIZED)
         putString(CLASS_NAME, value.javaClass.name)
         putBundle(VALUE, kotlinSerialization.serialize(value))
     }
 
-    private fun Bundle.decodeCustomValue(): Any {
-        val typeId = checkNotNull(getString(TYPE_ID)) { "Hiro 自定义 SavableState 缺少 typeId" }
-        val codec = checkNotNull(configuration.codecFor(typeId)) { "恢复 Hiro 状态时没有注册 typeId 为 $typeId 的 Codec" }
-        val state = checkNotNull(getBundle(VALUE)) { "Hiro 自定义 SavableState 缺少负载：$typeId" }
+    private fun Bundle.decodeSeDesValue(): Any {
+        val typeName = checkNotNull(getString(CLASS_NAME)) { "Hiro 特制 SavableState SeDes 缺少类名" }
+        val seDes = checkNotNull(configuration.seDesFor(typeName)) { "恢复 Hiro 状态时没有为 $typeName 注册特制 SeDes" }
+        val state = checkNotNull(getBundle(VALUE)) { "Hiro 特制 SavableState SeDes 缺少负载：$typeName" }
         state.classLoader = classLoader
-        return codec.deserializeAny(state)
+        return seDes.deserializeAny(state)
     }
 
     private fun SnapshotMutableState<*>.policyCodeOrNull() = when {
@@ -275,12 +285,16 @@ internal class HiroSavableStateBundleCodec(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun HiroSavableStateCodec<*>.serializeAny(value: Any) = (this as HiroSavableStateCodec<Any>).serialize(value)
+    private fun HiroSavableStateSeDes<*>.serializeAny(value: Any) = (this as HiroSavableStateSeDes<Any>).serialize(value)
 
     @Suppress("UNCHECKED_CAST")
-    private fun HiroSavableStateCodec<*>.deserializeAny(state: Bundle) = (this as HiroSavableStateCodec<Any>).deserialize(state)
+    private fun HiroSavableStateSeDes<*>.deserializeAny(state: Bundle) = (this as HiroSavableStateSeDes<Any>).deserialize(state)
 
     private companion object {
+        const val FORMAT_VERSION_KEY = "hiro:format-version"
+        const val PAYLOAD_KEY = "hiro:payload"
+        const val CURRENT_FORMAT_VERSION = 1
+
         const val TYPE = "t"
         const val VALUE = "v"
         const val VALUES = "vs"
@@ -288,7 +302,6 @@ internal class HiroSavableStateBundleCodec(
         const val POLICY = "p"
         const val STATE_KIND = "s"
         const val COMPONENT_TYPE = "c"
-        const val TYPE_ID = "i"
         const val CLASS_NAME = "n"
 
         const val TYPE_NULL = 0
@@ -302,7 +315,7 @@ internal class HiroSavableStateBundleCodec(
         const val TYPE_BINDER = 8
         const val TYPE_SIZE = 9
         const val TYPE_SIZE_F = 10
-        const val TYPE_CUSTOM = 11
+        const val TYPE_SEDES = 11
         const val TYPE_KOTLIN_SERIALIZED = 12
 
         const val POLICY_NEVER_EQUAL = 0

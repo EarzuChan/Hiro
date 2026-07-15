@@ -1,4 +1,4 @@
-package me.earzuchan.hiro.compose
+package me.earzuchan.hiro.compose.interaction
 
 import android.content.Context
 import android.os.Build
@@ -7,9 +7,10 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import me.earzuchan.hiro.compose.HiroComposeConfigurationDsl
 
-/** 可跨线程运输的 Hiro ViewConfiguration 完整快照 */
-data class HiroViewConfigurationSnapshot(
+/** 可跨线程运输的 Hiro 交互手感完整调校 */
+data class HiroInteractionTuning(
     val longPressTimeoutMillis: Long,
     val doubleTapTimeoutMillis: Long,
     val doubleTapMinTimeMillis: Long,
@@ -34,9 +35,9 @@ data class HiroViewConfigurationSnapshot(
     }
 }
 
-/** 为 Compose 或 Android 基线覆写少数字段的 ViewConfiguration Patch */
+/** 为 Compose 或 Android 交互基线覆写少数字段 */
 @HiroComposeConfigurationDsl
-class HiroViewConfigurationPatchBuilder internal constructor() {
+class HiroInteractionTuningPatchBuilder internal constructor() {
     var longPressTimeoutMillis: Long? = null
     var doubleTapTimeoutMillis: Long? = null
     var doubleTapMinTimeMillis: Long? = null
@@ -47,7 +48,7 @@ class HiroViewConfigurationPatchBuilder internal constructor() {
     var minimumFlingVelocity: Float? = null
     var handwritingGestureLineMargin: Dp? = null
 
-    internal fun compile() = HiroViewConfigurationPatch(
+    internal fun compile() = HiroInteractionTuningPatch(
         longPressTimeoutMillis = longPressTimeoutMillis,
         doubleTapTimeoutMillis = doubleTapTimeoutMillis,
         doubleTapMinTimeMillis = doubleTapMinTimeMillis,
@@ -60,51 +61,51 @@ class HiroViewConfigurationPatchBuilder internal constructor() {
     )
 }
 
-/** 选择 Hiro ViewConfiguration 的来源和变换方式 */
+/** 选择 Hiro 交互手感的来源和变换方式 */
 @HiroComposeConfigurationDsl
-class HiroViewConfigurationPolicyBuilder internal constructor(initial: HiroViewConfigurationPolicy) {
+class HiroInteractionPolicyBuilder internal constructor(initial: HiroInteractionPolicy) {
     private var policy = initial
 
-    fun followSystem(patch: HiroViewConfigurationPatchBuilder.() -> Unit = {}) {
-        policy = HiroViewConfigurationPolicy.FollowSystem(HiroViewConfigurationPatchBuilder().apply(patch).compile())
+    fun followSystem(patch: HiroInteractionTuningPatchBuilder.() -> Unit = {}) {
+        policy = HiroInteractionPolicy.FollowSystem(HiroInteractionTuningPatchBuilder().apply(patch).compile())
     }
 
-    fun followCompose(patch: HiroViewConfigurationPatchBuilder.() -> Unit = {}) {
-        policy = HiroViewConfigurationPolicy.FollowCompose(HiroViewConfigurationPatchBuilder().apply(patch).compile())
+    fun followCompose(patch: HiroInteractionTuningPatchBuilder.() -> Unit = {}) {
+        policy = HiroInteractionPolicy.FollowCompose(HiroInteractionTuningPatchBuilder().apply(patch).compile())
     }
 
-    fun fixed(snapshot: HiroViewConfigurationSnapshot) {
-        policy = HiroViewConfigurationPolicy.Fixed(snapshot)
+    fun fixed(tuning: HiroInteractionTuning) {
+        policy = HiroInteractionPolicy.Fixed(tuning)
     }
 
-    fun transformSystem(transformer: (HiroViewConfigurationSnapshot) -> HiroViewConfigurationSnapshot) {
-        policy = HiroViewConfigurationPolicy.TransformSystem(transformer)
+    fun transformSystem(transformer: (HiroInteractionTuning) -> HiroInteractionTuning) {
+        policy = HiroInteractionPolicy.TransformSystem(transformer)
     }
 
     internal fun build() = policy
 }
 
-internal sealed interface HiroViewConfigurationPolicy {
-    fun resolve(context: Context, density: Density): HiroViewConfigurationSnapshot
+internal sealed interface HiroInteractionPolicy {
+    fun resolve(context: Context, density: Density): HiroInteractionTuning
 
-    class FollowSystem(private val patch: HiroViewConfigurationPatch = HiroViewConfigurationPatch.Empty) : HiroViewConfigurationPolicy {
-        override fun resolve(context: Context, density: Density) = patch.applyTo(androidViewConfiguration(context, density), density)
+    class FollowSystem(private val patch: HiroInteractionTuningPatch = HiroInteractionTuningPatch.Empty) : HiroInteractionPolicy {
+        override fun resolve(context: Context, density: Density) = patch.applyTo(androidInteractionTuning(context, density), density)
     }
 
-    class FollowCompose(private val patch: HiroViewConfigurationPatch = HiroViewConfigurationPatch.Empty) : HiroViewConfigurationPolicy {
-        override fun resolve(context: Context, density: Density) = patch.applyTo(composeViewConfiguration(density), density)
+    class FollowCompose(private val patch: HiroInteractionTuningPatch = HiroInteractionTuningPatch.Empty) : HiroInteractionPolicy {
+        override fun resolve(context: Context, density: Density) = patch.applyTo(composeInteractionTuning(density), density)
     }
 
-    class Fixed(private val snapshot: HiroViewConfigurationSnapshot) : HiroViewConfigurationPolicy {
-        override fun resolve(context: Context, density: Density) = snapshot
+    class Fixed(private val tuning: HiroInteractionTuning) : HiroInteractionPolicy {
+        override fun resolve(context: Context, density: Density) = tuning
     }
 
-    class TransformSystem(private val transformer: (HiroViewConfigurationSnapshot) -> HiroViewConfigurationSnapshot) : HiroViewConfigurationPolicy {
-        override fun resolve(context: Context, density: Density) = transformer(androidViewConfiguration(context, density)).validated()
+    class TransformSystem(private val transformer: (HiroInteractionTuning) -> HiroInteractionTuning) : HiroInteractionPolicy {
+        override fun resolve(context: Context, density: Density) = transformer(androidInteractionTuning(context, density)).validated()
     }
 }
 
-internal data class HiroViewConfigurationPatch(
+internal data class HiroInteractionTuningPatch(
     val longPressTimeoutMillis: Long?,
     val doubleTapTimeoutMillis: Long?,
     val doubleTapMinTimeMillis: Long?,
@@ -115,7 +116,7 @@ internal data class HiroViewConfigurationPatch(
     val minimumFlingVelocity: Float?,
     val handwritingGestureLineMargin: Dp?,
 ) {
-    fun applyTo(base: HiroViewConfigurationSnapshot, density: Density) = base.copy(
+    fun applyTo(base: HiroInteractionTuning, density: Density) = base.copy(
         longPressTimeoutMillis = longPressTimeoutMillis ?: base.longPressTimeoutMillis,
         doubleTapTimeoutMillis = doubleTapTimeoutMillis ?: base.doubleTapTimeoutMillis,
         doubleTapMinTimeMillis = doubleTapMinTimeMillis ?: base.doubleTapMinTimeMillis,
@@ -128,11 +129,11 @@ internal data class HiroViewConfigurationPatch(
     )
 
     companion object {
-        val Empty = HiroViewConfigurationPatch(null, null, null, null, null, null, null, null, null)
+        val Empty = HiroInteractionTuningPatch(null, null, null, null, null, null, null, null, null)
     }
 }
 
-internal fun composeViewConfiguration(density: Density) = HiroViewConfigurationSnapshot(
+internal fun composeInteractionTuning(density: Density) = HiroInteractionTuning(
     longPressTimeoutMillis = 500L,
     doubleTapTimeoutMillis = 300L,
     doubleTapMinTimeMillis = 40L,
@@ -144,8 +145,8 @@ internal fun composeViewConfiguration(density: Density) = HiroViewConfigurationS
     handwritingGestureLineMargin = 16f,
 )
 
-private fun androidViewConfiguration(context: Context, density: Density): HiroViewConfigurationSnapshot {
-    val compose = composeViewConfiguration(density)
+private fun androidInteractionTuning(context: Context, density: Density): HiroInteractionTuning {
+    val compose = composeInteractionTuning(density)
     val android = AndroidViewConfiguration.get(context)
 
     return compose.copy(
@@ -159,6 +160,6 @@ private fun androidViewConfiguration(context: Context, density: Density): HiroVi
     )
 }
 
-private fun HiroViewConfigurationSnapshot.validated() = copy()
+private fun HiroInteractionTuning.validated() = copy()
 
 private fun Float.isValidDistance() = isFinite() && this >= 0f
