@@ -2,10 +2,15 @@ package me.earzuchan.hiro.compose.internal
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.text.input.EditCommand
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.Lifecycle
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
+import me.earzuchan.hiro.compose.internal.input.HiroImeCommandSink
+import me.earzuchan.hiro.compose.internal.input.HiroImeHost
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
 import me.earzuchan.hiro.skia.HiroSkiaLayer
@@ -22,7 +27,7 @@ private data class HiroComposePlatformState(
     val inputMode: InputMode?,
 )
 
-internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, initialEnvironment: HiroComposeEnvironment, initialWindowInsets: HiroWindowInsetsSnapshot, private val requestInputMode: (InputMode) -> Boolean, private val requestNavigationBackHandling: (Boolean) -> Boolean, private val savedStateTransport: HiroSavedStateTransport, private val savableStateConfiguration: HiroSavableStateConfiguration) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate {
+internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, initialEnvironment: HiroComposeEnvironment, initialWindowInsets: HiroWindowInsetsSnapshot, private val requestInputMode: (InputMode) -> Boolean, private val requestNavigationBackHandling: (Boolean) -> Boolean, private val savedStateTransport: HiroSavedStateTransport, private val savableStateConfiguration: HiroSavableStateConfiguration, private val imeHost: HiroImeHost) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate, HiroImeCommandSink {
     private val commands = HiroComposeCommandMailbox()
     private val drainScheduled = AtomicBoolean(false)
     private val platformStateDirty = AtomicBoolean(true)
@@ -58,6 +63,12 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
     fun cancelPointerInput() = post(HiroComposeCommand.CancelPointerInput)
 
     fun dispatchNavigationBack(): Boolean = post(HiroComposeCommand.NavigationBack)
+
+    override fun sendImeEdit(sessionId: Long, commands: List<EditCommand>): Boolean = post(HiroComposeCommand.ImeEdit(sessionId, commands))
+
+    override fun sendImeAction(sessionId: Long, action: ImeAction): Boolean = post(HiroComposeCommand.ImeAction(sessionId, action))
+
+    override fun sendKeyEvent(event: KeyEvent): Boolean = post(HiroComposeCommand.KeyInput(event))
 
     fun wake() {
         signalDrain()
@@ -224,6 +235,9 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
                     is HiroComposeCommand.SetContent -> ensureScene().setContent(command.content)
                     is HiroComposeCommand.PointerEvent -> ensureScene().sendPointerEvent(command.event)
                     is HiroComposeCommand.MoveLifecycle -> ensureScene().moveLifecycleTo(command.state)
+                    is HiroComposeCommand.ImeEdit -> ensureScene().performImeEdit(command.sessionId, command.commands)
+                    is HiroComposeCommand.ImeAction -> ensureScene().performImeAction(command.sessionId, command.action)
+                    is HiroComposeCommand.KeyInput -> ensureScene().sendKeyEvent(command.event)
                     HiroComposeCommand.CancelPointerInput -> scene?.cancelPointerInput()
                     HiroComposeCommand.NavigationBack -> scene?.dispatchNavigationBack()
                 }
@@ -265,6 +279,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
                 requestNavigationBackHandling = requestNavigationBackHandling,
                 savedStateTransport = savedStateTransport,
                 savableStateConfiguration = savableStateConfiguration,
+                imeHost = imeHost,
             ).also { nextScene ->
                 createdScene = nextScene
                 scene = nextScene

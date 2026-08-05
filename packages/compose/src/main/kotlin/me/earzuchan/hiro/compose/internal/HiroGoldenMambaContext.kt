@@ -8,7 +8,11 @@ import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.platform.PlatformArchitectureComponentsOwner
 import androidx.compose.ui.platform.PlatformContext
+import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.PlatformWindowInsets
+import androidx.compose.ui.text.input.EditCommand
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PlatformTextInputService
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.text.intl.LocaleList
@@ -19,11 +23,14 @@ import me.earzuchan.hiro.compose.interaction.HiroInteractionTuning
 import me.earzuchan.hiro.compose.internal.architecture.HiroArchitectureComponentsOwner
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.interaction.HiroMutableInteractionTuning
+import me.earzuchan.hiro.compose.internal.input.HiroImeHost
+import me.earzuchan.hiro.compose.internal.input.HiroPlatformTextInputService
+import me.earzuchan.hiro.compose.internal.input.HiroRenderTextInputSession
 import me.earzuchan.hiro.compose.internal.window.HiroMutableWindowInfo
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 
 @OptIn(InternalComposeUiApi::class)
-internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWindowInsets, initialEnvironment: HiroComposeEnvironment, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration) : PlatformContext.Empty(), AutoCloseable {
+internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWindowInsets, initialEnvironment: HiroComposeEnvironment, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration, imeHost: HiroImeHost) : PlatformContext.Empty(), AutoCloseable {
     private val hiroArchitectureComponentsOwner = HiroArchitectureComponentsOwner(
         restoredState = savedStateTransport.snapshotForNewScene(),
         publishSavedState = savedStateTransport::publishSavedState,
@@ -39,6 +46,10 @@ internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWind
 
     private val hiroInteractionTuning = HiroMutableInteractionTuning(initialEnvironment.interactionTuning)
 
+    private val hiroTextInputSession = HiroRenderTextInputSession(imeHost)
+
+    private val hiroTextInputService = HiroPlatformTextInputService(imeHost)
+
     override val architectureComponentsOwner: PlatformArchitectureComponentsOwner get() = hiroArchitectureComponentsOwner
 
     override val inputModeManager: InputModeManager get() = hiroInputModeManager
@@ -50,6 +61,11 @@ internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWind
     override val localeList: LocaleList get() = hiroLocaleList
 
     override val viewConfiguration: ViewConfiguration get() = hiroInteractionTuning
+
+    @Suppress("DEPRECATION")
+    override val textInputService: PlatformTextInputService get() = hiroTextInputService
+
+    override suspend fun startInputMethod(request: PlatformTextInputMethodRequest): Nothing = hiroTextInputSession.startInputMethod(request)
 
     fun updateInputMode(inputMode: InputMode) = hiroInputModeManager.update(inputMode)
 
@@ -70,6 +86,10 @@ internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWind
     fun prepareForClose() = hiroArchitectureComponentsOwner.prepareForClose()
 
     fun dispatchNavigationBack() = hiroArchitectureComponentsOwner.dispatchNavigationBack()
+
+    fun performImeEdit(sessionId: Long, commands: List<EditCommand>) = hiroTextInputSession.performEdit(sessionId, commands)
+
+    fun performImeAction(sessionId: Long, action: ImeAction) = hiroTextInputSession.performImeAction(sessionId, action)
 
     override fun close() = hiroArchitectureComponentsOwner.close()
 }

@@ -4,7 +4,11 @@ import android.content.Context
 import android.content.res.Configuration
 import android.util.AttributeSet
 import android.util.Log
+import android.graphics.Rect
+import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
 import me.earzuchan.hiro.compose.internal.HiroComposeHostSession
@@ -47,6 +51,7 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         require(explicitSavedStateKey == null || explicitSavedStateKey.isNotBlank()) { "HiroComposeView 的 SavedState key 不能为空" }
         isFocusable = true
         isFocusableInTouchMode = true
+        descendantFocusability = FOCUS_BLOCK_DESCENDANTS
         Log.d(TAG, "被创建")
     }
 
@@ -102,6 +107,11 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         activeSession?.updateEnvironment()
     }
 
+    override fun onFocusChanged(gainFocus: Boolean, direction: Int, previouslyFocusedRect: Rect?) {
+        super.onFocusChanged(gainFocus, direction, previouslyFocusedRect)
+        activeSession?.onViewFocusChanged(gainFocus)
+    }
+
     override fun onVisibilityChanged(changedView: android.view.View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
         activeSession?.synchronizeLifecycle()
@@ -130,6 +140,15 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         if (event.shouldLogTouchEvent()) Log.d(TAG, "触摸事件：${event.name()}，指针数：${event.pointerCount}，动作指针：${event.actionIndex}，已处理：$handled")
         return handled || super.dispatchTouchEvent(event)
     }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (closed || event.keyCode == KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(event)
+        return activeSession?.dispatchKeyEvent(event) == true || super.dispatchKeyEvent(event)
+    }
+
+    override fun onCheckIsTextEditor(): Boolean = activeSession?.isTextEditor() == true
+
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? = activeSession?.createInputConnection(outAttrs)
 
     override fun close() {
         checkMainThreadForHiroCompose()

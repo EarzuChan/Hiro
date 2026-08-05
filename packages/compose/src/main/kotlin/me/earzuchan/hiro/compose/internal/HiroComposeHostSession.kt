@@ -1,6 +1,9 @@
 package me.earzuchan.hiro.compose.internal
 
 import android.view.MotionEvent
+import android.view.KeyEvent
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.unit.IntSize
@@ -10,6 +13,7 @@ import me.earzuchan.hiro.compose.HiroComposeView
 import me.earzuchan.hiro.compose.internal.architecture.HiroAndroidHostBridge
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputModeFiddler
+import me.earzuchan.hiro.compose.internal.input.HiroAndroidImeHost
 import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputRouter
 import me.earzuchan.hiro.compose.internal.input.HiroComposeInputSink
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
@@ -22,6 +26,8 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
 
     private val layer = HiroSkiaLayer()
 
+    private val imeHost = HiroAndroidImeHost(view)
+
     private val renderController = HiroComposeRenderController(
         layer = layer,
         initialEnvironment = environmentReader.read(),
@@ -30,6 +36,7 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
         requestNavigationBackHandling = ::requestNavigationBackHandlingFromRenderThread,
         savedStateTransport = savedStateTransport,
         savableStateConfiguration = configuration.savableStateConfiguration,
+        imeHost = imeHost,
     )
 
     private val hostBridge = HiroAndroidHostBridge(
@@ -57,6 +64,7 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
 
     init {
         checkMainThreadForHiroCompose()
+        imeHost.bindCommandSink(renderController)
         layer.renderDelegate = renderController
     }
 
@@ -100,6 +108,16 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
 
     fun dispatchTouchEvent(event: MotionEvent): Boolean = if (closed) false else inputRouter.dispatchTouchEvent(event)
 
+    fun dispatchKeyEvent(event: KeyEvent): Boolean = if (closed) false else imeHost.sendKeyEvent(event)
+
+    fun isTextEditor(): Boolean = !closed && imeHost.isTextEditor()
+
+    fun createInputConnection(outAttrs: EditorInfo): InputConnection? = if (closed) null else imeHost.createInputConnection(outAttrs)
+
+    fun onViewFocusChanged(hasFocus: Boolean) {
+        if (!closed) imeHost.onViewFocusChanged(hasFocus)
+    }
+
     override fun close() {
         checkMainThreadForHiroCompose()
         if (closed) return
@@ -112,6 +130,7 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
         try {
             if (layer.surfaceView == null) renderController.closeBeforeRenderThreadStarts() else layer.close()
         } finally {
+            imeHost.close()
             hostBridge.close()
             renderActive = null
             attached = false

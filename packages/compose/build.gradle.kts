@@ -31,7 +31,13 @@ val composeJar = processToHiroJar("compose") {
 
     // 处理
 
-    dropPathPrefix("androidx/compose/ui/awt/", "androidx/compose/runtime/saveable/serialization/SerializableSaverKt")
+    dropPathPrefix(
+        "androidx/compose/ui/awt/",
+        "androidx/compose/runtime/saveable/serialization/SerializableSaverKt",
+        "androidx/compose/ui/text/input/PlatformImeOptions.class",
+        "androidx/compose/ui/input/key/Key.class",
+        "androidx/compose/ui/input/key/Key\$Companion.class"
+    )
 
     dropPathFragment(
         "Awt",
@@ -94,7 +100,10 @@ val composeJar = processToHiroJar("compose") {
         "androidx/compose/ui/platform/DesktopUriHandler",
         "androidx/compose/ui/text/intl/DesktopPlatformLocale",
         "androidx/compose/ui/platform/DisposableSaveableStateRegistry",
-        "androidx/compose/runtime/saveable/serialization/SerializableSaverKt"
+        "androidx/compose/runtime/saveable/serialization/SerializableSaverKt",
+        "androidx/compose/ui/text/input/PlatformImeOptions.class",
+        "androidx/compose/ui/input/key/Key.class",
+        "androidx/compose/ui/input/key/Key\$Companion.class"
     )
 }
 

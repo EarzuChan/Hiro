@@ -9,11 +9,14 @@ import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.LocalSystemTheme
 import androidx.compose.ui.graphics.asComposeCanvas
 import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.platform.PlatformWindowInsets
 import androidx.compose.ui.scene.CanvasLayersComposeScene
 import androidx.compose.ui.scene.ComposeScene
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.text.input.EditCommand
+import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -21,6 +24,7 @@ import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.savedstate.compose.LocalSavedStateRegistryOwner
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
+import me.earzuchan.hiro.compose.internal.input.HiroImeHost
 import me.earzuchan.hiro.compose.internal.util.name
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroMutablePlatformWindowInsets
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
@@ -28,12 +32,12 @@ import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
 import org.jetbrains.skia.Canvas as SkiaCanvas
 
 @OptIn(InternalComposeUiApi::class)
-internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, private val dispatcher: HiroSkiaRenderDispatcher, initialEnvironment: HiroComposeEnvironment, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration) : AutoCloseable {
+internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, private val dispatcher: HiroSkiaRenderDispatcher, initialEnvironment: HiroComposeEnvironment, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration, imeHost: HiroImeHost) : AutoCloseable {
     private val systemTheme = mutableStateOf(initialEnvironment.systemTheme)
 
     private val windowInsets = HiroMutablePlatformWindowInsets()
 
-    private val platformContext = HiroGoldenMambaContext(hiroWindowInsets = windowInsets as PlatformWindowInsets, initialEnvironment = initialEnvironment, requestInputMode = requestInputMode, requestNavigationBackHandling = requestNavigationBackHandling, savedStateTransport = savedStateTransport, savableStateConfiguration = savableStateConfiguration)
+    private val platformContext = HiroGoldenMambaContext(hiroWindowInsets = windowInsets as PlatformWindowInsets, initialEnvironment = initialEnvironment, requestInputMode = requestInputMode, requestNavigationBackHandling = requestNavigationBackHandling, savedStateTransport = savedStateTransport, savableStateConfiguration = savableStateConfiguration, imeHost = imeHost)
 
     private val lifecycleOwner = checkNotNull(platformContext.architectureComponentsOwner.lifecycleOwner) { "Hiro Compose 没有可用的 LifecycleOwner" }
 
@@ -170,6 +174,23 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
         checkUsable()
         scene.cancelPointerInput()
         scheduleFrame()
+    }
+
+    internal fun performImeEdit(sessionId: Long, commands: List<EditCommand>) {
+        checkUsable()
+        if (platformContext.performImeEdit(sessionId, commands)) scheduleFrame()
+    }
+
+    internal fun performImeAction(sessionId: Long, action: ImeAction) {
+        checkUsable()
+        if (platformContext.performImeAction(sessionId, action)) scheduleFrame()
+    }
+
+    internal fun sendKeyEvent(event: KeyEvent): Boolean {
+        checkUsable()
+        val handled = scene.sendKeyEvent(event)
+        scheduleFrame()
+        return handled
     }
 
     @SuppressLint("RestrictedApi")
