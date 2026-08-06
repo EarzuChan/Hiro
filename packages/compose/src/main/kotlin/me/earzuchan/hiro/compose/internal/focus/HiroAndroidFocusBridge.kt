@@ -109,8 +109,6 @@ internal class HiroAndroidFocusBridge(private val view: View) : FocusManager {
         FocusDirection.Down -> View.FOCUS_DOWN
         FocusDirection.Left -> View.FOCUS_LEFT
         FocusDirection.Right -> View.FOCUS_RIGHT
-        FocusDirection.Enter -> View.FOCUS_DOWN
-        FocusDirection.Exit -> View.FOCUS_FORWARD
         else -> null
     }
 }

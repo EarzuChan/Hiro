@@ -184,6 +184,11 @@ internal class HiroAndroidImeHost(private val view: View) : HiroImeHost, HiroAnd
         inputCommandsScheduled = false
         if (closed || pendingInputCommands.isEmpty()) return
 
+        if (!view.isFocused && view.rootView.findFocus()?.onCheckIsTextEditor() == true) {
+            pendingInputCommands.clear()
+            return
+        }
+
         var startInput: InputCommand.Start? = null
         var stopInput: InputCommand.Stop? = null
         var showKeyboard: Boolean? = null

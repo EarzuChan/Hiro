@@ -7,6 +7,7 @@ import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -40,41 +41,45 @@ class ImeActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val spacing = (12f * resources.displayMetrics.density).roundToInt()
-        val root = LinearLayout(this).apply {
+
+        setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(spacing, spacing, spacing, spacing)
-        }
 
-        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
+                val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
 
-            view.setPadding(spacing, spacing + systemBars.top, spacing, spacing + systemBars.bottom)
-            insets
-        }
+                view.setPadding(spacing, spacing + systemBars.top, spacing, spacing + systemBars.bottom)
+                insets
+            }
 
-        // 三个啊三个
-        root.addView(EditText(this).apply {
-            hint = "原生 EditText"
-            isSingleLine = true
-        }, LinearLayout.LayoutParams(MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            // 三个啊三个
+            addView(EditText(this@ImeActivity).apply {
+                hint = "原生 EditText"
+                isSingleLine = true
+            }, LinearLayout.LayoutParams(MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
 
-        root.addView(HiroComposeView(this).apply {
-            setContent { MaterialTheme { ImeExample() } }
-        }, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f).apply { topMargin = spacing })
+            addView(HiroComposeView(this@ImeActivity).apply {
+                setContent { UiWrapper { ImeExample() } }
+            }, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f).apply { topMargin = spacing })
 
-        root.addView(HiroComposeView(this).apply {
-            rotation = 1.5f
-            scaleX = 0.97f
-            scaleY = 0.97f
-            setContent { MaterialTheme { TransformedSiblingEditor() } }
-        }, LinearLayout.LayoutParams(MATCH_PARENT, (132f * resources.displayMetrics.density).roundToInt()).apply { topMargin = spacing })
-
-        setContentView(root)
+            addView(HiroComposeView(this@ImeActivity).apply {
+                rotation = 1.5f
+                scaleX = 0.97f
+                scaleY = 0.97f
+                setContent { UiWrapper { TransformedSiblingEditor() } }
+            }, LinearLayout.LayoutParams(MATCH_PARENT, (132f * resources.displayMetrics.density).roundToInt()).apply { topMargin = spacing })
+        })
     }
 }
 
 @Composable
-private fun ImeExample() = Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+fun UiWrapper(content: @Composable () -> Unit) = MaterialTheme(if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
+    Surface(content = content)
+}
+
+@Composable
+private fun ImeExample() = Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val modernState = rememberTextFieldState("新状态文本")
@@ -91,15 +96,8 @@ private fun ImeExample() = Column(Modifier.fillMaxSize().background(MaterialThem
 
     Column(Modifier.fillMaxWidth().widthIn(max = 720.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("IME 实机检查台", style = MaterialTheme.typography.headlineSmall)
-        Text("最近动作：$lastAction")
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button({ keyboard?.show() }, Modifier.weight(1f)) { Text("显示") }
-
-            Button(onClick = { keyboard?.hide() }, modifier = Modifier.weight(1f)) { Text("隐藏") }
-
-            Button(onClick = { focusManager.clearFocus() }, modifier = Modifier.weight(1f)) { Text("清除焦点") }
-        }
+        Button({ focusManager.clearFocus() }) { Text("清除焦点") } // 仅清除本HiroComposeViewPort的焦点
 
         ExampleSection("状态与组合文本") {
             OutlinedTextField(
@@ -183,12 +181,14 @@ private fun ImeExample() = Column(Modifier.fillMaxSize().background(MaterialThem
         }
 
         KeyboardTypeFields()
+
+        Text("最近动作：$lastAction")
         ImeActionFields(focusManager = focusManager, onAction = { lastAction = it })
     }
 }
 
 @Composable
-private fun TransformedSiblingEditor() = Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun TransformedSiblingEditor() = Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
     var value by remember { mutableStateOf(TextFieldValue("变换与裁剪锚点")) }
 
     Text("兄弟 HiroComposeView", style = MaterialTheme.typography.titleSmall)
