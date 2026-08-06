@@ -8,19 +8,20 @@ import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 
 internal fun AndroidKeyEvent.toHiroComposeKeyEvent(): KeyEvent? {
-    val type = when (action) {
+    val snapshot = AndroidKeyEvent(this)
+    val type = when (snapshot.action) {
         AndroidKeyEvent.ACTION_DOWN -> KeyEventType.KeyDown
         AndroidKeyEvent.ACTION_UP -> KeyEventType.KeyUp
         else -> return null
     }
     return KeyEvent(
-        key = Key(keyCode),
+        key = Key(snapshot.keyCode),
         type = type,
-        codePoint = unicodeChar,
-        isCtrlPressed = isCtrlPressed,
-        isMetaPressed = isMetaPressed,
-        isAltPressed = isAltPressed,
-        isShiftPressed = isShiftPressed,
-        nativeEvent = this,
+        codePoint = snapshot.unicodeChar,
+        isCtrlPressed = snapshot.isCtrlPressed,
+        isMetaPressed = snapshot.isMetaPressed,
+        isAltPressed = snapshot.isAltPressed,
+        isShiftPressed = snapshot.isShiftPressed,
+        nativeEvent = snapshot,
     )
 }

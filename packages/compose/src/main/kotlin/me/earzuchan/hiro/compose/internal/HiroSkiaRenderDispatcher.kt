@@ -40,17 +40,22 @@ internal class HiroSkiaRenderDispatcher(private val isRenderThread: () -> Boolea
 internal object HiroRenderDispatcherRegistry {
     private val lock = Any()
     private val dispatchers = mutableListOf<HiroSkiaRenderDispatcher>()
+    private val androidPlatformServices = mutableMapOf<HiroSkiaRenderDispatcher, HiroAndroidPlatformServices>()
     private val current = ThreadLocal<HiroSkiaRenderDispatcher?>()
 
-    fun register(dispatcher: HiroSkiaRenderDispatcher): AutoCloseable {
+    fun register(dispatcher: HiroSkiaRenderDispatcher, services: HiroAndroidPlatformServices): AutoCloseable {
         synchronized(lock) {
             check(dispatcher !in dispatchers) { "Hiro 渲染调度器被重复注册" }
             dispatchers += dispatcher
+            androidPlatformServices[dispatcher] = services
         }
 
         HiroSnapshotApplyDispatcher.onDispatcherAvailable()
         return AutoCloseable {
-            synchronized(lock) { dispatchers.remove(dispatcher) }
+            synchronized(lock) {
+                dispatchers.remove(dispatcher)
+                androidPlatformServices.remove(dispatcher)
+            }
             HiroSnapshotApplyDispatcher.onDispatcherAvailable()
         }
     }
@@ -61,6 +66,11 @@ internal object HiroRenderDispatcherRegistry {
         val dispatcher = current.get() ?: return null
 
         return synchronized(lock) { dispatcher.takeIf(dispatchers::contains) }
+    }
+
+    fun currentAndroidPlatformServices(): HiroAndroidPlatformServices? {
+        val dispatcher = current.get() ?: return null
+        return synchronized(lock) { androidPlatformServices[dispatcher] }
     }
 
     fun snapshot(): List<HiroSkiaRenderDispatcher> = synchronized(lock) { dispatchers.toList() }

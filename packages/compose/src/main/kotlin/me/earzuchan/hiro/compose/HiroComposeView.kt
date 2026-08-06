@@ -112,6 +112,18 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         activeSession?.onViewFocusChanged(gainFocus)
     }
 
+    override fun getFocusedRect(rect: Rect) {
+        if (activeSession?.copyFocusedRect(rect) == true) return
+        super.getFocusedRect(rect)
+    }
+
+    override fun requestFocus(direction: Int, previouslyFocusedRect: Rect?): Boolean {
+        val wasFocused = isFocused
+        val focused = super.requestFocus(direction, previouslyFocusedRect)
+        if (focused && !wasFocused) activeSession?.onPlatformFocusRequested(direction, previouslyFocusedRect)
+        return focused
+    }
+
     override fun onVisibilityChanged(changedView: android.view.View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
         activeSession?.synchronizeLifecycle()
@@ -134,7 +146,7 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         if (closed) return false
-        if (event.actionMasked == MotionEvent.ACTION_DOWN) requestFocus()
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) activeSession?.requestViewFocusFromPointer() ?: requestFocus()
 
         val handled = activeSession?.dispatchTouchEvent(event) == true
         if (event.shouldLogTouchEvent()) Log.d(TAG, "触摸事件：${event.name()}，指针数：${event.pointerCount}，动作指针：${event.actionIndex}，已处理：$handled")

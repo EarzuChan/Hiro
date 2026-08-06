@@ -10,7 +10,7 @@ import androidx.compose.ui.platform.PlatformArchitectureComponentsOwner
 import androidx.compose.ui.platform.PlatformContext
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.PlatformWindowInsets
-import androidx.compose.ui.text.input.EditCommand
+import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PlatformTextInputService
 import androidx.compose.ui.platform.ViewConfiguration
@@ -24,13 +24,14 @@ import me.earzuchan.hiro.compose.internal.architecture.HiroArchitectureComponent
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.interaction.HiroMutableInteractionTuning
 import me.earzuchan.hiro.compose.internal.input.HiroImeHost
-import me.earzuchan.hiro.compose.internal.input.HiroPlatformTextInputService
-import me.earzuchan.hiro.compose.internal.input.HiroRenderTextInputSession
+import me.earzuchan.hiro.compose.internal.input.HiroImeEditRequest
+import me.earzuchan.hiro.compose.internal.input.HiroTextInputCoordinator
+import me.earzuchan.hiro.compose.internal.focus.HiroAndroidFocusBridge
 import me.earzuchan.hiro.compose.internal.window.HiroMutableWindowInfo
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 
 @OptIn(InternalComposeUiApi::class)
-internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWindowInsets, initialEnvironment: HiroComposeEnvironment, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration, imeHost: HiroImeHost) : PlatformContext.Empty(), AutoCloseable {
+internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWindowInsets, initialEnvironment: HiroComposeEnvironment, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration, private val imeHost: HiroImeHost, private val focusBridge: HiroAndroidFocusBridge, androidPlatformServices: HiroAndroidPlatformServices) : PlatformContext.Empty(), AutoCloseable {
     private val hiroArchitectureComponentsOwner = HiroArchitectureComponentsOwner(
         restoredState = savedStateTransport.snapshotForNewScene(),
         publishSavedState = savedStateTransport::publishSavedState,
@@ -46,9 +47,9 @@ internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWind
 
     private val hiroInteractionTuning = HiroMutableInteractionTuning(initialEnvironment.interactionTuning)
 
-    private val hiroTextInputSession = HiroRenderTextInputSession(imeHost)
+    private val hiroTextInputCoordinator = HiroTextInputCoordinator(imeHost)
 
-    private val hiroTextInputService = HiroPlatformTextInputService(imeHost)
+    override val textToolbar: TextToolbar = androidPlatformServices.createTextToolbar()
 
     override val architectureComponentsOwner: PlatformArchitectureComponentsOwner get() = hiroArchitectureComponentsOwner
 
@@ -62,10 +63,14 @@ internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWind
 
     override val viewConfiguration: ViewConfiguration get() = hiroInteractionTuning
 
-    @Suppress("DEPRECATION")
-    override val textInputService: PlatformTextInputService get() = hiroTextInputService
+    override val parentFocusManager get() = focusBridge
 
-    override suspend fun startInputMethod(request: PlatformTextInputMethodRequest): Nothing = hiroTextInputSession.startInputMethod(request)
+    @Suppress("DEPRECATION")
+    override val textInputService: PlatformTextInputService get() = hiroTextInputCoordinator
+
+    override suspend fun startInputMethod(request: PlatformTextInputMethodRequest): Nothing = hiroTextInputCoordinator.startInputMethod(request)
+
+    override fun requestFocus(): Boolean = focusBridge.requestViewFocus()
 
     fun updateInputMode(inputMode: InputMode) = hiroInputModeManager.update(inputMode)
 
@@ -87,11 +92,14 @@ internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWind
 
     fun dispatchNavigationBack() = hiroArchitectureComponentsOwner.dispatchNavigationBack()
 
-    fun performImeEdit(sessionId: Long, commands: List<EditCommand>) = hiroTextInputSession.performEdit(sessionId, commands)
+    fun performImeEdit(request: HiroImeEditRequest) = hiroTextInputCoordinator.performEdit(request)
 
-    fun performImeAction(sessionId: Long, action: ImeAction) = hiroTextInputSession.performImeAction(sessionId, action)
+    fun performImeAction(sessionId: Long, action: ImeAction) = hiroTextInputCoordinator.performImeAction(sessionId, action)
 
-    override fun close() = hiroArchitectureComponentsOwner.close()
+    override fun close() {
+        textToolbar.hide()
+        hiroArchitectureComponentsOwner.close()
+    }
 }
 
 private class HiroAndroidInputModeManager(private val requestFromHost: (InputMode) -> Boolean) : InputModeManager {

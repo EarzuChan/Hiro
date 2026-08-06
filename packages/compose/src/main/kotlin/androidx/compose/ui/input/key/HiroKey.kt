@@ -6,8 +6,6 @@ import android.view.KeyEvent
 import android.view.KeyEvent.KEYCODE_TV_AUDIO_DESCRIPTION_MIX_DOWN
 import android.view.KeyEvent.KEYCODE_TV_AUDIO_DESCRIPTION_MIX_UP
 import androidx.compose.ui.input.key.Key.Companion.Number
-import androidx.compose.ui.util.packInts
-import androidx.compose.ui.util.unpackInt1
 
 @JvmInline
 value class Key(val keyCode: Long) {
@@ -738,43 +736,74 @@ value class Key(val keyCode: Long) {
         
         val ProfileSwitch = Key(KeyEvent.KEYCODE_PROFILE_SWITCH)
 
-        // Android 不存在的按键：使用连续负数保持键值唯一
+        val NumLock = Key(KeyEvent.KEYCODE_NUM_LOCK)
 
-        
-        val NumPadDirectionUp = Key(-1000000001)
+        val F1 = Key(KeyEvent.KEYCODE_F1)
+        val F2 = Key(KeyEvent.KEYCODE_F2)
+        val F3 = Key(KeyEvent.KEYCODE_F3)
+        val F4 = Key(KeyEvent.KEYCODE_F4)
+        val F5 = Key(KeyEvent.KEYCODE_F5)
+        val F6 = Key(KeyEvent.KEYCODE_F6)
+        val F7 = Key(KeyEvent.KEYCODE_F7)
+        val F8 = Key(KeyEvent.KEYCODE_F8)
+        val F9 = Key(KeyEvent.KEYCODE_F9)
+        val F10 = Key(KeyEvent.KEYCODE_F10)
+        val F11 = Key(KeyEvent.KEYCODE_F11)
+        val F12 = Key(KeyEvent.KEYCODE_F12)
 
-        
-        val NumPadDirectionDown = Key(-1000000002)
+        val NumPad0 = Key(KeyEvent.KEYCODE_NUMPAD_0)
+        val NumPad1 = Key(KeyEvent.KEYCODE_NUMPAD_1)
+        val NumPad2 = Key(KeyEvent.KEYCODE_NUMPAD_2)
+        val NumPad3 = Key(KeyEvent.KEYCODE_NUMPAD_3)
+        val NumPad4 = Key(KeyEvent.KEYCODE_NUMPAD_4)
+        val NumPad5 = Key(KeyEvent.KEYCODE_NUMPAD_5)
+        val NumPad6 = Key(KeyEvent.KEYCODE_NUMPAD_6)
+        val NumPad7 = Key(KeyEvent.KEYCODE_NUMPAD_7)
+        val NumPad8 = Key(KeyEvent.KEYCODE_NUMPAD_8)
+        val NumPad9 = Key(KeyEvent.KEYCODE_NUMPAD_9)
+        val NumPadDivide = Key(KeyEvent.KEYCODE_NUMPAD_DIVIDE)
+        val NumPadMultiply = Key(KeyEvent.KEYCODE_NUMPAD_MULTIPLY)
+        val NumPadSubtract = Key(KeyEvent.KEYCODE_NUMPAD_SUBTRACT)
+        val NumPadAdd = Key(KeyEvent.KEYCODE_NUMPAD_ADD)
+        val NumPadDot = Key(KeyEvent.KEYCODE_NUMPAD_DOT)
+        val NumPadComma = Key(KeyEvent.KEYCODE_NUMPAD_COMMA)
+        val NumPadEnter = Key(KeyEvent.KEYCODE_NUMPAD_ENTER)
+        val NumPadEquals = Key(KeyEvent.KEYCODE_NUMPAD_EQUALS)
+        val NumPadLeftParenthesis = Key(KeyEvent.KEYCODE_NUMPAD_LEFT_PAREN)
+        val NumPadRightParenthesis = Key(KeyEvent.KEYCODE_NUMPAD_RIGHT_PAREN)
 
-        
-        val NumPadDirectionLeft = Key(-1000000003)
+        val MediaPlay = Key(KeyEvent.KEYCODE_MEDIA_PLAY)
+        val MediaPause = Key(KeyEvent.KEYCODE_MEDIA_PAUSE)
+        val MediaStop = Key(KeyEvent.KEYCODE_MEDIA_STOP)
 
-        
-        val NumPadDirectionRight = Key(-1000000004)
+        val Button7 = Key(KeyEvent.KEYCODE_BUTTON_7)
+        val Button8 = Key(KeyEvent.KEYCODE_BUTTON_8)
+        val Button9 = Key(KeyEvent.KEYCODE_BUTTON_9)
+        val Button10 = Key(KeyEvent.KEYCODE_BUTTON_10)
+        val Button11 = Key(KeyEvent.KEYCODE_BUTTON_11)
+        val Button12 = Key(KeyEvent.KEYCODE_BUTTON_12)
+        val Button13 = Key(KeyEvent.KEYCODE_BUTTON_13)
+        val Button14 = Key(KeyEvent.KEYCODE_BUTTON_14)
+        val Button15 = Key(KeyEvent.KEYCODE_BUTTON_15)
+        val Button16 = Key(KeyEvent.KEYCODE_BUTTON_16)
+        val Forward = Key(KeyEvent.KEYCODE_FORWARD)
 
-        
-        val NumPadMoveHome = Key(-1000000005)
-
-        
-        val NumPadMoveEnd = Key(-1000000006)
-
-        
-        val NumPadPageUp = Key(-1000000007)
-
-        
-        val NumPadPageDown = Key(-1000000008)
-
-        
-        val NumPadInsert = Key(-1000000009)
-
-        
-        val NumPadDelete = Key(-1000000010)
+        val NumPadDirectionUp = NumPad8
+        val NumPadDirectionDown = NumPad2
+        val NumPadDirectionLeft = NumPad4
+        val NumPadDirectionRight = NumPad6
+        val NumPadMoveHome = NumPad7
+        val NumPadMoveEnd = NumPad1
+        val NumPadPageUp = NumPad9
+        val NumPadPageDown = NumPad3
+        val NumPadInsert = NumPad0
+        val NumPadDelete = NumPadDot
     }
 
     override fun toString(): String = "Key code: $keyCode"
 }
 
 val Key.nativeKeyCode: Int
-    get() = unpackInt1(keyCode)
+    get() = keyCode.toInt()
 
-fun Key(nativeKeyCode: Int): Key = Key(packInts(nativeKeyCode, 0))
+fun Key(nativeKeyCode: Int): Key = Key(nativeKeyCode.toLong())

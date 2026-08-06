@@ -4,6 +4,7 @@ package me.earzuchan.hiro.compose.internal.input
 
 import android.os.Bundle
 import android.text.TextUtils
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.BaseInputConnection
@@ -16,7 +17,6 @@ import androidx.compose.ui.text.input.CommitTextCommand
 import androidx.compose.ui.text.input.DeleteSurroundingTextCommand
 import androidx.compose.ui.text.input.DeleteSurroundingTextInCodePointsCommand
 import androidx.compose.ui.text.input.EditCommand
-import androidx.compose.ui.text.input.EditProcessor
 import androidx.compose.ui.text.input.FinishComposingTextCommand
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.SetComposingRegionCommand
@@ -30,35 +30,41 @@ import androidx.compose.ui.text.input.getTextBeforeSelection
 internal class HiroAndroidInputConnection(
     view: View,
     private val sessionId: Long,
+    private val connectionId: Long,
     initialValue: TextFieldValue,
-    private val autoCorrect: Boolean,
     private val callbacks: Callbacks,
 ) : BaseInputConnection(view, false) {
     internal interface Callbacks {
-        fun sendEditCommands(sessionId: Long, commands: List<EditCommand>): Boolean
+        fun enqueueEdit(request: HiroImeEditRequest): Boolean
 
         fun sendImeAction(sessionId: Long, action: ImeAction): Boolean
 
-        fun sendKeyEvent(event: KeyEvent): Boolean
+        fun enqueueImeKeyEvent(event: KeyEvent): Boolean
 
-        fun requestCursorUpdates(mode: Int): Boolean
+        fun requestCursorUpdates(mode: Int, filter: Int?): Boolean
 
         fun onConnectionClosed(connection: HiroAndroidInputConnection)
     }
 
-    private var value = initialValue
-    private val editProcessor = EditProcessor().apply { reset(initialValue, null) }
+    private val predictionState = HiroImePredictionState(initialValue)
     private var batchDepth = 0
     private val pendingCommands = mutableListOf<EditCommand>()
     private var active = true
     private var extractedTextToken = 0
     private var monitorsExtractedText = false
+    private var loggedNullCommitText = false
+    private var loggedNullComposingText = false
 
-    fun updateValue(value: TextFieldValue) {
-        if (active) {
-            this.value = value
-            editProcessor.reset(value, null)
-        }
+    private val value: TextFieldValue get() = predictionState.value
+
+    fun updateAuthority(value: TextFieldValue, acknowledgedSequence: Long? = null) {
+        if (active) predictionState.reconcile(value, acknowledgedSequence)
+    }
+
+    fun matchesConnection(connectionId: Long): Boolean = this.connectionId == connectionId
+
+    fun rejectEdit(sequence: Long) {
+        if (active) predictionState.reject(sequence)
     }
 
     fun monitorsExtractedText(): Boolean = monitorsExtractedText
@@ -75,14 +81,34 @@ internal class HiroAndroidInputConnection(
         if (!active || batchDepth == 0) return false
         batchDepth--
         flushCommandsIfReady()
-        return batchDepth > 0
+        return true
     }
 
-    override fun commitText(text: CharSequence?, newCursorPosition: Int) = addCommand(CommitTextCommand(text.toString(), newCursorPosition))
+    override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
+        if (!active) return false
+        if (text == null) {
+            if (!loggedNullCommitText) {
+                loggedNullCommitText = true
+                Log.w(TAG, "IME 调用了 null commitText，已忽略，session=$sessionId，connection=$connectionId")
+            }
+            return true
+        }
+        return addCommand(CommitTextCommand(text.toString(), newCursorPosition))
+    }
 
     override fun setComposingRegion(start: Int, end: Int) = addCommand(SetComposingRegionCommand(start, end))
 
-    override fun setComposingText(text: CharSequence?, newCursorPosition: Int) = addCommand(SetComposingTextCommand(text.toString(), newCursorPosition))
+    override fun setComposingText(text: CharSequence?, newCursorPosition: Int): Boolean {
+        if (!active) return false
+        if (text == null) {
+            if (!loggedNullComposingText) {
+                loggedNullComposingText = true
+                Log.w(TAG, "IME 调用了 null setComposingText，已忽略，session=$sessionId，connection=$connectionId")
+            }
+            return true
+        }
+        return addCommand(SetComposingTextCommand(text.toString(), newCursorPosition))
+    }
 
     override fun finishComposingText() = addCommand(FinishComposingTextCommand())
 
@@ -132,19 +158,23 @@ internal class HiroAndroidInputConnection(
         }
     }
 
-    override fun sendKeyEvent(event: KeyEvent): Boolean = active && callbacks.sendKeyEvent(event)
+    override fun sendKeyEvent(event: KeyEvent): Boolean = active && callbacks.enqueueImeKeyEvent(event)
 
-    override fun requestCursorUpdates(cursorUpdateMode: Int): Boolean = active && callbacks.requestCursorUpdates(cursorUpdateMode)
+    override fun requestCursorUpdates(cursorUpdateMode: Int): Boolean =
+        active && callbacks.requestCursorUpdates(cursorUpdateMode, null)
+
+    override fun requestCursorUpdates(cursorUpdateMode: Int, cursorUpdateFilter: Int): Boolean =
+        active && callbacks.requestCursorUpdates(cursorUpdateMode, cursorUpdateFilter)
 
     override fun commitCompletion(text: CompletionInfo?): Boolean = false
 
-    override fun commitCorrection(correctionInfo: CorrectionInfo?): Boolean = active && autoCorrect
+    override fun commitCorrection(correctionInfo: CorrectionInfo?): Boolean = false
 
     override fun clearMetaKeyStates(states: Int): Boolean = false
 
     override fun reportFullscreenMode(enabled: Boolean): Boolean = false
 
-    override fun performPrivateCommand(action: String?, data: Bundle?): Boolean = active
+    override fun performPrivateCommand(action: String?, data: Bundle?): Boolean = false
 
     override fun closeConnection() {
         if (!active) return
@@ -173,14 +203,24 @@ internal class HiroAndroidInputConnection(
         if (batchDepth != 0 || pendingCommands.isEmpty()) return
         val commands = pendingCommands.toList()
         pendingCommands.clear()
-        value = editProcessor.apply(commands)
-        callbacks.sendEditCommands(sessionId, commands)
+        val applied = try {
+            predictionState.apply(commands)
+        } catch (throwable: Throwable) {
+            Log.w(TAG, "IME 编辑命令无法应用，已忽略，session=$sessionId，connection=$connectionId", throwable)
+            return
+        }
+        val request = HiroImeEditRequest(sessionId, connectionId, applied.sequence, commands)
+        if (!callbacks.enqueueEdit(request)) predictionState.reject(applied.sequence)
     }
 
     private fun sendShortcut(keyCode: Int): Boolean {
-        val down = callbacks.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-        val up = callbacks.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+        val down = callbacks.enqueueImeKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+        val up = callbacks.enqueueImeKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
         return down || up
+    }
+
+    companion object {
+        private const val TAG = "HiroInputConnection"
     }
 }
 

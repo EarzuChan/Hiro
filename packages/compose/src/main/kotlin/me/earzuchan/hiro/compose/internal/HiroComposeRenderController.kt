@@ -1,8 +1,10 @@
 package me.earzuchan.hiro.compose.internal
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.text.input.EditCommand
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntSize
@@ -10,6 +12,8 @@ import androidx.lifecycle.Lifecycle
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
 import me.earzuchan.hiro.compose.internal.input.HiroImeCommandSink
+import me.earzuchan.hiro.compose.internal.focus.HiroAndroidFocusBridge
+import me.earzuchan.hiro.compose.internal.input.HiroImeEditRequest
 import me.earzuchan.hiro.compose.internal.input.HiroImeHost
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
@@ -27,7 +31,7 @@ private data class HiroComposePlatformState(
     val inputMode: InputMode?,
 )
 
-internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, initialEnvironment: HiroComposeEnvironment, initialWindowInsets: HiroWindowInsetsSnapshot, private val requestInputMode: (InputMode) -> Boolean, private val requestNavigationBackHandling: (Boolean) -> Boolean, private val savedStateTransport: HiroSavedStateTransport, private val savableStateConfiguration: HiroSavableStateConfiguration, private val imeHost: HiroImeHost) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate, HiroImeCommandSink {
+internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, initialEnvironment: HiroComposeEnvironment, initialWindowInsets: HiroWindowInsetsSnapshot, private val requestInputMode: (InputMode) -> Boolean, private val requestNavigationBackHandling: (Boolean) -> Boolean, private val savedStateTransport: HiroSavedStateTransport, private val savableStateConfiguration: HiroSavableStateConfiguration, private val imeHost: HiroImeHost, private val focusBridge: HiroAndroidFocusBridge, private val androidPlatformServices: HiroAndroidPlatformServices) : HiroSkiaRenderDelegate, HiroSkiaRenderLifecycleDelegate, HiroImeCommandSink {
     private val commands = HiroComposeCommandMailbox()
     private val drainScheduled = AtomicBoolean(false)
     private val platformStateDirty = AtomicBoolean(true)
@@ -62,13 +66,31 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
 
     fun cancelPointerInput() = post(HiroComposeCommand.CancelPointerInput)
 
+    fun releaseFocus() = post(HiroComposeCommand.ReleaseFocus)
+
+    fun takeFocus(direction: FocusDirection): Boolean = post(HiroComposeCommand.TakeFocus(direction))
+
     fun dispatchNavigationBack(): Boolean = post(HiroComposeCommand.NavigationBack)
 
-    override fun sendImeEdit(sessionId: Long, commands: List<EditCommand>): Boolean = post(HiroComposeCommand.ImeEdit(sessionId, commands))
+    fun dispatchViewKeyEvent(event: KeyEvent): Boolean {
+        val request = HiroViewKeyEventRequest(event)
+        if (!post(HiroComposeCommand.ViewKeyInput(request))) return false
+        return when (request.await(VIEW_KEY_EVENT_TIMEOUT_MILLIS)) {
+            HiroViewKeyEventRequest.Result.Handled -> true
+            HiroViewKeyEventRequest.Result.Unhandled,
+            HiroViewKeyEventRequest.Result.Cancelled -> false
+            HiroViewKeyEventRequest.Result.ClaimedTimeout -> {
+                Log.w(TAG, "View 键事件已被渲染线程认领但未及时完成，按已消费处理")
+                true
+            }
+        }
+    }
 
-    override fun sendImeAction(sessionId: Long, action: ImeAction): Boolean = post(HiroComposeCommand.ImeAction(sessionId, action))
+    override fun enqueueImeEdit(request: HiroImeEditRequest): Boolean = post(HiroComposeCommand.ImeEdit(request))
 
-    override fun sendKeyEvent(event: KeyEvent): Boolean = post(HiroComposeCommand.KeyInput(event))
+    override fun enqueueImeAction(sessionId: Long, action: ImeAction): Boolean = post(HiroComposeCommand.ImeAction(sessionId, action))
+
+    override fun enqueueImeKeyEvent(event: KeyEvent): Boolean = post(HiroComposeCommand.ImeKeyInput(event))
 
     fun wake() {
         signalDrain()
@@ -235,15 +257,29 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
                     is HiroComposeCommand.SetContent -> ensureScene().setContent(command.content)
                     is HiroComposeCommand.PointerEvent -> ensureScene().sendPointerEvent(command.event)
                     is HiroComposeCommand.MoveLifecycle -> ensureScene().moveLifecycleTo(command.state)
-                    is HiroComposeCommand.ImeEdit -> ensureScene().performImeEdit(command.sessionId, command.commands)
+                    is HiroComposeCommand.ImeEdit -> ensureScene().performImeEdit(command.request)
                     is HiroComposeCommand.ImeAction -> ensureScene().performImeAction(command.sessionId, command.action)
-                    is HiroComposeCommand.KeyInput -> ensureScene().sendKeyEvent(command.event)
+                    is HiroComposeCommand.ImeKeyInput -> ensureScene().sendKeyEvent(command.event)
+                    is HiroComposeCommand.ViewKeyInput -> if (command.request.claim()) {
+                        try {
+                            command.request.complete(ensureScene().sendKeyEvent(command.request.event))
+                        } catch (throwable: Throwable) {
+                            command.request.complete(true)
+                            throw throwable
+                        }
+                    }
                     HiroComposeCommand.CancelPointerInput -> scene?.cancelPointerInput()
                     HiroComposeCommand.NavigationBack -> scene?.dispatchNavigationBack()
+                    HiroComposeCommand.ReleaseFocus -> scene?.releaseFocus()
+                    is HiroComposeCommand.TakeFocus -> ensureScene().takeFocus(command.direction)
                 }
             }
         } finally {
+            batch.forEach { command ->
+                if (command is HiroComposeCommand.ViewKeyInput) command.request.cancel()
+            }
             drainScheduled.set(false)
+            if (commands.isNotEmpty()) signalDrain()
         }
     }
 
@@ -267,7 +303,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
         check(!terminated) { "Hiro Compose 渲染控制器已经终止" }
 
         state.compareAndSet(HiroComposeRenderState.WaitingForRenderThread, HiroComposeRenderState.Running)
-        val registration = HiroRenderDispatcherRegistry.register(dispatcher)
+        val registration = HiroRenderDispatcherRegistry.register(dispatcher, androidPlatformServices)
         var createdScene: HiroSkiaComposeScene? = null
 
         try {
@@ -280,6 +316,8 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
                 savedStateTransport = savedStateTransport,
                 savableStateConfiguration = savableStateConfiguration,
                 imeHost = imeHost,
+                focusBridge = focusBridge,
+                androidPlatformServices = androidPlatformServices,
             ).also { nextScene ->
                 createdScene = nextScene
                 scene = nextScene
@@ -304,6 +342,11 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
     }
 
     private fun checkRenderThread() = check(dispatcher.isOnRenderThread()) { "Hiro Compose 渲染控制器只能在 Skia 渲染线程操作" }
+
+    companion object {
+        private const val TAG = "HiroComposeRender"
+        private const val VIEW_KEY_EVENT_TIMEOUT_MILLIS = 32L
+    }
 }
 
 private enum class HiroComposeRenderState(val acceptsCommands: Boolean) { WaitingForRenderThread(true), Running(true), Closing(false), Closed(false) }

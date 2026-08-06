@@ -1,5 +1,5 @@
 <resources>
-    <style name="HiroImeExampleTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+    <style name="HiroImeExampleTheme" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
     </style>

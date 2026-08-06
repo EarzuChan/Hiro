@@ -3,7 +3,7 @@
 - IME与TextField正常性
 - Compose：ViewModel、LifeCycle、SavedState的支持基本完成，接下来是R和Res
 - 客制化：各方面的`更好的用户自定义入口`：基本，HiroCfg
-- Sysbar适配：基本完成。Sysbar的颜色问题？（这是AndroidX的锅还是我的）
+- Sysbar适配：基本完成。Sysbar的颜色问题？（这是AndroidX的锅还是我的）。Insets 未来可看是否做 ViewPort Relative NEWAPI
 - 测试液态玻璃和Miuix：已跑通
 - 内建各组件的关键点Log，以及基于Debug/Release的启用性门控
 - Input手感调优：AI说可接ViewCfg里的参数，有必要吗

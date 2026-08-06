@@ -9,13 +9,13 @@ import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.LocalSystemTheme
 import androidx.compose.ui.graphics.asComposeCanvas
 import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.platform.PlatformWindowInsets
 import androidx.compose.ui.scene.CanvasLayersComposeScene
 import androidx.compose.ui.scene.ComposeScene
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.text.input.EditCommand
 import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -25,6 +25,8 @@ import androidx.savedstate.compose.LocalSavedStateRegistryOwner
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
 import me.earzuchan.hiro.compose.internal.input.HiroImeHost
+import me.earzuchan.hiro.compose.internal.focus.HiroAndroidFocusBridge
+import me.earzuchan.hiro.compose.internal.input.HiroImeEditRequest
 import me.earzuchan.hiro.compose.internal.util.name
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroMutablePlatformWindowInsets
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
@@ -32,12 +34,12 @@ import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
 import org.jetbrains.skia.Canvas as SkiaCanvas
 
 @OptIn(InternalComposeUiApi::class)
-internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, private val dispatcher: HiroSkiaRenderDispatcher, initialEnvironment: HiroComposeEnvironment, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration, imeHost: HiroImeHost) : AutoCloseable {
+internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, private val dispatcher: HiroSkiaRenderDispatcher, initialEnvironment: HiroComposeEnvironment, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration, imeHost: HiroImeHost, private val focusBridge: HiroAndroidFocusBridge, androidPlatformServices: HiroAndroidPlatformServices) : AutoCloseable {
     private val systemTheme = mutableStateOf(initialEnvironment.systemTheme)
 
     private val windowInsets = HiroMutablePlatformWindowInsets()
 
-    private val platformContext = HiroGoldenMambaContext(hiroWindowInsets = windowInsets as PlatformWindowInsets, initialEnvironment = initialEnvironment, requestInputMode = requestInputMode, requestNavigationBackHandling = requestNavigationBackHandling, savedStateTransport = savedStateTransport, savableStateConfiguration = savableStateConfiguration, imeHost = imeHost)
+    private val platformContext = HiroGoldenMambaContext(hiroWindowInsets = windowInsets as PlatformWindowInsets, initialEnvironment = initialEnvironment, requestInputMode = requestInputMode, requestNavigationBackHandling = requestNavigationBackHandling, savedStateTransport = savedStateTransport, savableStateConfiguration = savableStateConfiguration, imeHost = imeHost, focusBridge = focusBridge, androidPlatformServices = androidPlatformServices)
 
     private val lifecycleOwner = checkNotNull(platformContext.architectureComponentsOwner.lifecycleOwner) { "Hiro Compose 没有可用的 LifecycleOwner" }
 
@@ -176,9 +178,22 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
         scheduleFrame()
     }
 
-    internal fun performImeEdit(sessionId: Long, commands: List<EditCommand>) {
+    internal fun releaseFocus() {
         checkUsable()
-        if (platformContext.performImeEdit(sessionId, commands)) scheduleFrame()
+        scene.focusManager.releaseFocus()
+        scheduleFrame()
+    }
+
+    internal fun takeFocus(direction: FocusDirection): Boolean {
+        checkUsable()
+        val focused = scene.focusManager.takeFocus(direction)
+        if (focused) scheduleFrame()
+        return focused
+    }
+
+    internal fun performImeEdit(request: HiroImeEditRequest) {
+        checkUsable()
+        if (platformContext.performImeEdit(request)) scheduleFrame()
     }
 
     internal fun performImeAction(sessionId: Long, action: ImeAction) {
@@ -198,6 +213,7 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
         checkUsable()
 
         scene.render(canvas.asComposeCanvas(), nanoTime)
+        focusBridge.publishFocusedRect(scene.focusManager.getFocusRect(afterLayout = false))
     }
 
     override fun close() {

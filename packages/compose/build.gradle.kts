@@ -36,7 +36,22 @@ val composeJar = processToHiroJar("compose") {
         "androidx/compose/runtime/saveable/serialization/SerializableSaverKt",
         "androidx/compose/ui/text/input/PlatformImeOptions.class",
         "androidx/compose/ui/input/key/Key.class",
-        "androidx/compose/ui/input/key/Key\$Companion.class"
+        "androidx/compose/ui/input/key/Key\$Companion.class",
+        "androidx/compose/ui/input/key/Key_desktopKt.class",
+        "androidx/compose/ui/input/key/InternalKeyEvent.class",
+        "androidx/compose/ui/input/key/KeyEvent_desktopKt__KeyEvent_skikoKt.class",
+        "androidx/compose/foundation/text/DefaultSkikoKeyMapping.class",
+        "androidx/compose/foundation/text/KeyMapping_desktopKt",
+        "androidx/compose/foundation/text/KeyMapping_skikoKt",
+        "androidx/compose/foundation/text/KeyEventHelpers_desktopKt.class",
+        "androidx/compose/foundation/text/TextFieldKeyInput_desktopKt",
+        "androidx/compose/foundation/text/input/internal/TextFieldKeyEventHandler_skikoKt",
+        "androidx/compose/ui/platform/PlatformClipboard_desktopKt.class",
+        "androidx/compose/ui/platform/ClipEntry.class",
+        "androidx/compose/ui/platform/ClipMetadata.class",
+        "androidx/compose/foundation/internal/ClipboardUtils_desktopKt",
+        "androidx/compose/foundation/text/input/internal/selection/ClipboardPasteState.class",
+        "androidx/compose/foundation/content/TransferableContent_skikoKt.class"
     )
 
     dropPathFragment(
@@ -103,7 +118,22 @@ val composeJar = processToHiroJar("compose") {
         "androidx/compose/runtime/saveable/serialization/SerializableSaverKt",
         "androidx/compose/ui/text/input/PlatformImeOptions.class",
         "androidx/compose/ui/input/key/Key.class",
-        "androidx/compose/ui/input/key/Key\$Companion.class"
+        "androidx/compose/ui/input/key/Key\$Companion.class",
+        "androidx/compose/ui/input/key/Key_desktopKt.class",
+        "androidx/compose/ui/input/key/InternalKeyEvent.class",
+        "androidx/compose/ui/input/key/KeyEvent_desktopKt__KeyEvent_skikoKt.class",
+        "androidx/compose/foundation/text/DefaultSkikoKeyMapping.class",
+        "androidx/compose/foundation/text/KeyMapping_desktopKt",
+        "androidx/compose/foundation/text/KeyMapping_skikoKt",
+        "androidx/compose/foundation/text/KeyEventHelpers_desktopKt.class",
+        "androidx/compose/foundation/text/TextFieldKeyInput_desktopKt",
+        "androidx/compose/foundation/text/input/internal/TextFieldKeyEventHandler_skikoKt",
+        "androidx/compose/ui/platform/PlatformClipboard_desktopKt.class",
+        "androidx/compose/ui/platform/ClipEntry.class",
+        "androidx/compose/ui/platform/ClipMetadata.class",
+        "androidx/compose/foundation/internal/ClipboardUtils_desktopKt",
+        "androidx/compose/foundation/text/input/internal/selection/ClipboardPasteState.class",
+        "androidx/compose/foundation/content/TransferableContent_skikoKt.class"
     )
 }
 

@@ -2,6 +2,7 @@ package me.earzuchan.hiro.compose.internal
 
 import android.view.MotionEvent
 import android.view.KeyEvent
+import android.graphics.Rect
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import androidx.compose.runtime.Composable
@@ -14,9 +15,11 @@ import me.earzuchan.hiro.compose.internal.architecture.HiroAndroidHostBridge
 import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputModeFiddler
 import me.earzuchan.hiro.compose.internal.input.HiroAndroidImeHost
+import me.earzuchan.hiro.compose.internal.focus.HiroAndroidFocusBridge
 import me.earzuchan.hiro.compose.internal.input.HiroAndroidInputRouter
 import me.earzuchan.hiro.compose.internal.input.HiroComposeInputSink
 import me.earzuchan.hiro.compose.internal.input.HiroComposePointerEvent
+import me.earzuchan.hiro.compose.internal.input.toHiroComposeKeyEvent
 import me.earzuchan.hiro.compose.internal.util.checkMainThreadForHiroCompose
 import me.earzuchan.hiro.compose.internal.windowinsets.HiroWindowInsetsFiddlerForAndroid
 import me.earzuchan.hiro.skia.HiroSkiaLayer
@@ -28,6 +31,10 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
 
     private val imeHost = HiroAndroidImeHost(view)
 
+    private val focusBridge = HiroAndroidFocusBridge(view)
+
+    private val androidPlatformServices = HiroAndroidPlatformServices(view)
+
     private val renderController = HiroComposeRenderController(
         layer = layer,
         initialEnvironment = environmentReader.read(),
@@ -37,6 +44,8 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
         savedStateTransport = savedStateTransport,
         savableStateConfiguration = configuration.savableStateConfiguration,
         imeHost = imeHost,
+        focusBridge = focusBridge,
+        androidPlatformServices = androidPlatformServices,
     )
 
     private val hostBridge = HiroAndroidHostBridge(
@@ -65,6 +74,7 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
     init {
         checkMainThreadForHiroCompose()
         imeHost.bindCommandSink(renderController)
+        focusBridge.bind(renderController::releaseFocus)
         layer.renderDelegate = renderController
     }
 
@@ -108,14 +118,27 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
 
     fun dispatchTouchEvent(event: MotionEvent): Boolean = if (closed) false else inputRouter.dispatchTouchEvent(event)
 
-    fun dispatchKeyEvent(event: KeyEvent): Boolean = if (closed) false else imeHost.sendKeyEvent(event)
+    fun requestViewFocusFromPointer(): Boolean = if (closed) false else focusBridge.requestViewFocus()
+
+    fun copyFocusedRect(outRect: Rect): Boolean = !closed && focusBridge.copyFocusedRect(outRect)
+
+    fun onPlatformFocusRequested(direction: Int, previouslyFocusedRect: Rect?) {
+        if (closed || !focusBridge.consumeExternalFocusEntry()) return
+        renderController.takeFocus(focusBridge.toComposeFocusDirection(direction))
+    }
+
+    fun dispatchKeyEvent(event: KeyEvent): Boolean = if (closed) false
+    else event.toHiroComposeKeyEvent()?.let(renderController::dispatchViewKeyEvent) == true
 
     fun isTextEditor(): Boolean = !closed && imeHost.isTextEditor()
 
     fun createInputConnection(outAttrs: EditorInfo): InputConnection? = if (closed) null else imeHost.createInputConnection(outAttrs)
 
     fun onViewFocusChanged(hasFocus: Boolean) {
-        if (!closed) imeHost.onViewFocusChanged(hasFocus)
+        if (!closed) {
+            focusBridge.onViewFocusChanged(hasFocus)
+            imeHost.onViewFocusChanged(hasFocus)
+        }
     }
 
     override fun close() {
@@ -130,6 +153,7 @@ internal class HiroComposeHostSession(private val view: HiroComposeView, private
         try {
             if (layer.surfaceView == null) renderController.closeBeforeRenderThreadStarts() else layer.close()
         } finally {
+            focusBridge.unbind()
             imeHost.close()
             hostBridge.close()
             renderActive = null

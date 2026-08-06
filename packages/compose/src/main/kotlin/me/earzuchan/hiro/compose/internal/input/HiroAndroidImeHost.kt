@@ -1,35 +1,50 @@
 package me.earzuchan.hiro.compose.internal.input
 
 import android.content.Context
-import android.graphics.Matrix
 import android.os.Looper
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
-import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
-import androidx.compose.ui.text.input.EditCommand
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.ImeOptions
 import androidx.core.view.SoftwareKeyboardControllerCompat
+import java.util.concurrent.atomic.AtomicLong
 import me.earzuchan.hiro.compose.internal.util.checkMainThreadForHiroCompose
 
 internal class HiroAndroidImeHost(private val view: View) : HiroImeHost, HiroAndroidInputConnection.Callbacks, AutoCloseable {
-    private data class Session(val id: Long, val imeOptions: ImeOptions, val snapshot: HiroImeSnapshot)
+    private data class Session(
+        val id: Long,
+        val revision: Long,
+        val imeOptions: ImeOptions,
+        val snapshot: HiroImeSnapshot,
+    )
 
-    private enum class InputCommand { Start, Stop, Show, Hide }
+    private sealed interface InputCommand {
+        data class Start(val sessionId: Long, val focusGeneration: Long) : InputCommand
+        data class Stop(val sessionId: Long) : InputCommand
+        data object Show : InputCommand
+        data object Hide : InputCommand
+    }
 
     private val inputMethodManager by lazy(LazyThreadSafetyMode.NONE) { view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager }
     private val keyboardController by lazy(LazyThreadSafetyMode.NONE) { SoftwareKeyboardControllerCompat(view) }
     private val connections = linkedSetOf<HiroAndroidInputConnection>()
     private val pendingInputCommands = mutableListOf<InputCommand>()
     private val processInputCommandsRunnable = Runnable(::processPendingInputCommands)
+    private val nextConnectionId = AtomicLong()
+    private val focusIntentCounter = AtomicLong()
     private var commandSink: HiroImeCommandSink? = null
     private var activeSession: Session? = null
     private var inputCommandsScheduled = false
-    private var cursorUpdateMode = 0
-    private var closed = false
+    private var cursorAnchorInfoRequest: HiroCursorAnchorInfoRequest? = null
+    private var pendingImmediateCursorUpdate = false
+    private var loggedCursorAnchorFailure = false
+    private var focusGeneration = 0L
+    private var minimumValidFocusIntent = 0L
+    @Volatile private var closed = false
 
     fun bindCommandSink(commandSink: HiroImeCommandSink) {
         checkMainThreadForHiroCompose()
@@ -46,63 +61,89 @@ internal class HiroAndroidImeHost(private val view: View) : HiroImeHost, HiroAnd
         return HiroAndroidInputConnection(
             view = view,
             sessionId = session.id,
+            connectionId = nextConnectionId.incrementAndGet(),
             initialValue = session.snapshot.value,
-            autoCorrect = session.imeOptions.autoCorrect,
             callbacks = this,
         ).also(connections::add)
     }
 
     fun onViewFocusChanged(hasFocus: Boolean) {
         checkMainThreadForHiroCompose()
-        if (hasFocus && activeSession != null) enqueueInputCommand(InputCommand.Start)
+        focusGeneration++
+        if (!hasFocus) minimumValidFocusIntent = focusIntentCounter.incrementAndGet()
+        if (hasFocus) activeSession?.let(::enqueueStart)
     }
 
-    override fun requestStartInput() = onMain { enqueueInputCommand(InputCommand.Start) }
-
-    override fun requestStopInput() = onMain { enqueueInputCommand(InputCommand.Stop) }
+    override fun requestStartInput() = onMain { activeSession?.let(::enqueueStart) }
 
     override fun requestShowKeyboard() = onMain { enqueueInputCommand(InputCommand.Show) }
 
     override fun requestHideKeyboard() = onMain { enqueueInputCommand(InputCommand.Hide) }
 
-    override fun startSession(sessionId: Long, imeOptions: ImeOptions, snapshot: HiroImeSnapshot) = onMain {
+    override fun startSession(sessionId: Long, revision: Long, imeOptions: ImeOptions, snapshot: HiroImeSnapshot) = onMain {
         disposeConnections()
-        activeSession = Session(sessionId, imeOptions, snapshot)
-        enqueueInputCommand(InputCommand.Start)
+        cursorAnchorInfoRequest = null
+        pendingImmediateCursorUpdate = false
+        activeSession = Session(sessionId, revision, imeOptions, snapshot)
+        activeSession?.let(::enqueueStart)
     }
 
-    override fun updateSession(sessionId: Long, snapshot: HiroImeSnapshot, origin: HiroImeUpdateOrigin) = onMain {
+    override fun updateSession(
+        sessionId: Long,
+        revision: Long,
+        snapshot: HiroImeSnapshot,
+        acknowledgement: HiroImeEditAcknowledgement?,
+    ) = onMain {
         val oldSession = activeSession?.takeIf { it.id == sessionId } ?: return@onMain
-        activeSession = oldSession.copy(snapshot = snapshot)
+        if (revision <= oldSession.revision) return@onMain
+        activeSession = oldSession.copy(revision = revision, snapshot = snapshot)
 
-        if (oldSession.snapshot.value != snapshot.value) {
-            if (origin == HiroImeUpdateOrigin.StateObservation && requiresInputRestart(oldSession.snapshot.value, snapshot.value)) {
+        if (acknowledgement != null) {
+            publishTextState(snapshot, acknowledgement)
+        } else if (oldSession.snapshot.value != snapshot.value) {
+            if (requiresInputRestart(oldSession.snapshot.value, snapshot.value)) {
                 disposeConnections()
                 inputMethodManager.restartInput(view)
             } else {
-                publishTextState(snapshot)
+                publishTextState(snapshot, null)
             }
         }
-        if (cursorUpdateMode and InputConnection.CURSOR_UPDATE_MONITOR != 0) publishCursorAnchorInfo()
+        val cursorRequest = cursorAnchorInfoRequest
+        if (pendingImmediateCursorUpdate || cursorRequest?.monitor == true) publishCursorAnchorInfo()
+    }
+
+    override fun rejectEdit(request: HiroImeEditRequest) = onMain {
+        val connection = connections.firstOrNull { it.matchesConnection(request.connectionId) } ?: return@onMain
+        connection.rejectEdit(request.sequence)
+        connection.dispose()
+        connections.remove(connection)
+        if (activeSession != null && view.hasFocus()) inputMethodManager.restartInput(view)
     }
 
     override fun stopSession(sessionId: Long) = onMain {
         if (activeSession?.id != sessionId) return@onMain
         activeSession = null
-        cursorUpdateMode = 0
+        cursorAnchorInfoRequest = null
+        pendingImmediateCursorUpdate = false
         disposeConnections()
-        enqueueInputCommand(InputCommand.Stop)
+        enqueueInputCommand(InputCommand.Stop(sessionId))
     }
 
-    override fun sendEditCommands(sessionId: Long, commands: List<EditCommand>): Boolean = commandSink?.sendImeEdit(sessionId, commands) == true
+    override fun enqueueEdit(request: HiroImeEditRequest): Boolean = commandSink?.enqueueImeEdit(request) == true
 
-    override fun sendImeAction(sessionId: Long, action: ImeAction): Boolean = commandSink?.sendImeAction(sessionId, action) == true
+    override fun sendImeAction(sessionId: Long, action: ImeAction): Boolean = commandSink?.enqueueImeAction(sessionId, action) == true
 
-    override fun sendKeyEvent(event: KeyEvent): Boolean = event.toHiroComposeKeyEvent()?.let { commandSink?.sendKeyEvent(it) } == true
+    override fun enqueueImeKeyEvent(event: KeyEvent): Boolean = event.toHiroComposeKeyEvent()?.let { commandSink?.enqueueImeKeyEvent(it) } == true
 
-    override fun requestCursorUpdates(mode: Int): Boolean {
-        cursorUpdateMode = mode
-        if (mode and InputConnection.CURSOR_UPDATE_IMMEDIATE != 0) publishCursorAnchorInfo()
+    override fun requestCursorUpdates(mode: Int, filter: Int?): Boolean {
+        val request = resolveCursorAnchorInfoRequest(mode, filter)
+        if (request == null) {
+            Log.w(TAG, "IME 请求了不受支持的光标锚点更新标志：mode=$mode，filter=$filter")
+            return false
+        }
+        cursorAnchorInfoRequest = request
+        pendingImmediateCursorUpdate = mode and InputConnection.CURSOR_UPDATE_IMMEDIATE != 0
+        if (pendingImmediateCursorUpdate) publishCursorAnchorInfo()
         return true
     }
 
@@ -114,7 +155,10 @@ internal class HiroAndroidImeHost(private val view: View) : HiroImeHost, HiroAnd
         checkMainThreadForHiroCompose()
         if (closed) return
         closed = true
+        minimumValidFocusIntent = focusIntentCounter.incrementAndGet()
         activeSession = null
+        cursorAnchorInfoRequest = null
+        pendingImmediateCursorUpdate = false
         commandSink = null
         pendingInputCommands.clear()
         if (inputCommandsScheduled) view.removeCallbacks(processInputCommandsRunnable)
@@ -122,6 +166,10 @@ internal class HiroAndroidImeHost(private val view: View) : HiroImeHost, HiroAnd
         disposeConnections()
         keyboardController.hide()
         inputMethodManager.restartInput(view)
+    }
+
+    private fun enqueueStart(session: Session) {
+        enqueueInputCommand(InputCommand.Start(session.id, focusGeneration))
     }
 
     private fun enqueueInputCommand(command: InputCommand) {
@@ -136,57 +184,59 @@ internal class HiroAndroidImeHost(private val view: View) : HiroImeHost, HiroAnd
         inputCommandsScheduled = false
         if (closed || pendingInputCommands.isEmpty()) return
 
-        var startInput: Boolean? = null
+        var startInput: InputCommand.Start? = null
+        var stopInput: InputCommand.Stop? = null
         var showKeyboard: Boolean? = null
         pendingInputCommands.forEach { command ->
             when (command) {
-                InputCommand.Start -> {
-                    startInput = true
+                is InputCommand.Start -> {
+                    startInput = command
+                    stopInput = null
                     showKeyboard = true
                 }
-                InputCommand.Stop -> {
-                    startInput = false
+                is InputCommand.Stop -> {
+                    startInput = null
+                    stopInput = command
                     showKeyboard = false
                 }
-                InputCommand.Show, InputCommand.Hide -> if (startInput != false) showKeyboard = command == InputCommand.Show
+                InputCommand.Show, InputCommand.Hide -> if (stopInput == null) showKeyboard = command == InputCommand.Show
             }
         }
         pendingInputCommands.clear()
 
-        if (startInput == true && activeSession != null) {
-            view.requestFocus()
+        val session = activeSession
+        if (startInput != null && session?.id == startInput.sessionId && startInput.focusGeneration == focusGeneration && view.hasFocus()) {
             inputMethodManager.restartInput(view)
         }
         when (showKeyboard) {
-            true -> if (activeSession != null) keyboardController.show()
+            true -> if (session != null && view.hasFocus()) keyboardController.show()
             false -> keyboardController.hide()
             null -> Unit
         }
-        if (startInput == false) inputMethodManager.restartInput(view)
+        if (stopInput != null && activeSession?.id != stopInput.sessionId) inputMethodManager.restartInput(view)
     }
 
     private fun publishCursorAnchorInfo() {
         val session = activeSession ?: return
-        val cursor = session.snapshot.focusedRectInRoot ?: return
-        val location = IntArray(2).also(view::getLocationOnScreen)
-        val matrix = Matrix().apply { setTranslate(location[0].toFloat(), location[1].toFloat()) }
-        val info = CursorAnchorInfo.Builder()
-            .setMatrix(matrix)
-            .setSelectionRange(session.snapshot.value.selection.start, session.snapshot.value.selection.end)
-            .setInsertionMarkerLocation(
-                cursor.left,
-                cursor.top,
-                cursor.bottom,
-                cursor.bottom,
-                CursorAnchorInfo.FLAG_HAS_VISIBLE_REGION,
-            )
-            .build()
-        inputMethodManager.updateCursorAnchorInfo(view, info)
+        val request = cursorAnchorInfoRequest ?: return
+        if (!inputMethodManager.isActive(view)) return
+        try {
+            val info = buildHiroCursorAnchorInfo(view, session.snapshot, request) ?: return
+            inputMethodManager.updateCursorAnchorInfo(view, info)
+            pendingImmediateCursorUpdate = false
+            loggedCursorAnchorFailure = false
+        } catch (throwable: Throwable) {
+            if (!loggedCursorAnchorFailure) {
+                loggedCursorAnchorFailure = true
+                Log.w(TAG, "无法构建 IME 光标锚点信息，本次更新已忽略", throwable)
+            }
+        }
     }
 
-    private fun publishTextState(snapshot: HiroImeSnapshot) {
+    private fun publishTextState(snapshot: HiroImeSnapshot, acknowledgement: HiroImeEditAcknowledgement?) {
         connections.forEach { connection ->
-            connection.updateValue(snapshot.value)
+            val acknowledgedSequence = acknowledgement?.takeIf { connection.matchesConnection(it.connectionId) }?.sequence
+            connection.updateAuthority(snapshot.value, acknowledgedSequence)
             if (connection.monitorsExtractedText()) {
                 inputMethodManager.updateExtractedText(
                     view,
@@ -216,4 +266,8 @@ internal class HiroAndroidImeHost(private val view: View) : HiroImeHost, HiroAnd
 
     private fun requiresInputRestart(oldValue: androidx.compose.ui.text.input.TextFieldValue, newValue: androidx.compose.ui.text.input.TextFieldValue): Boolean =
         oldValue.text != newValue.text || oldValue.selection == newValue.selection && oldValue.composition != newValue.composition
+
+    companion object {
+        private const val TAG = "HiroAndroidImeHost"
+    }
 }
