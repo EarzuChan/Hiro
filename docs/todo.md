@@ -4,6 +4,7 @@
 - Compose：ViewModel、LifeCycle、SavedState的支持基本完成，接下来是R和Res
 - BuildLogic优化：是否需要再简化代码？黑曼巴
 - Skiko 可以变成 Processed Jar，且这同CMP都可以再屏蔽些类
+- 斜窗正家具：View的Transform，而里面HiroCompose渲染画面仍是正的。是否要同步，或者是可配置，有待讨论
 - 重建活动，Activity VM 实例能做到不变，而 Hiro VM 实例改变。这虽是预期行为，但有没有要改的
 - Input手感调优：AI说可接ViewCfg里的参数，有必要吗
 - IME与TextField、剪贴板正常性：基本OK，差手写、更多Input接入（虚拟触控板、键盘）什么的高级功能，暂不考虑做

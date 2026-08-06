@@ -1,6 +1,6 @@
 # Hiro
 
-![Version](https://img.shields.io/badge/Version-1.6.6--alpha--cmp1.11.1-red?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.7.0--alpha--cmp1.11.1-red?style=flat-square)
 [![Maven](https://img.shields.io/badge/Maven-EarzuChan-blue?style=flat-square)](https://earzuchan.github.io/maven/)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/license/MIT)
 
@@ -28,7 +28,7 @@
 - **Hiro Compose**：基于 Compose Multiplatform 的 UI/Runtime/Foundation 等的 SkikoDesktop 版本以及相关组件作为底版制作，并深度修补，尽力补齐在安卓上的体验（接入各种事件，并提供 HiroComposeView等）。
 - **Hiro Material 3**：对 Compose Multiplatform 的 Material 3 的 Skia（Skiko）/Desktop（即 Jvm）的打包与体验补齐。
 - **Hiro Gradle Plugin**：帮助用户实现无感对第三方 Compose 包的 Skia（Skiko）/Desktop 模块转用（ Android 转用 Skia（Skiko）/Desktop，并阻断对 AndroidX Compose / Compose Multiplatform 的 Android 的依赖引入）。
-- **Examples，几个使用例**：普通 Hiro Compose、Hiro Compose Material 3、Hiro Compose + 第三方包。
+- **Examples，几个使用例**：不但是我们开发测试时的参考面，也可以让您深度体验和了解 Hiro 各方面能力。
 - **[Whole App Example](https://github.com/EarzuChan/HiroWholeAppExample)**：一个简单但架构完整的 App，用以展示 Hiro 在开发可用 App 上的可行性。
 
 ## 用起来（Getting Started）

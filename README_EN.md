@@ -1,6 +1,6 @@
 # Hiro
 
-![Version](https://img.shields.io/badge/Version-1.6.6--alpha--cmp1.11.1-red?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.7.0--alpha--cmp1.11.1-red?style=flat-square)
 [![Maven](https://img.shields.io/badge/Maven-EarzuChan-blue?style=flat-square)](https://earzuchan.github.io/maven/)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](https://opensource.org/license/MIT)
 
@@ -28,7 +28,7 @@ Using the Skia (Skiko) edition of Compose Multiplatform on Android.
 - **Hiro Compose**: Built upon the Skiko Desktop versions of Compose Multiplatform's UI/Runtime/Foundation and related components as a base. It has been extensively modified to adapt the Android experience (handling various input events, providing `HiroComposeView`, etc.).
 - **Hiro Material 3**: A packaging of Compose Multiplatform's Material 3 for Skia (Skiko)/Desktop (JVM), adapted for a consistent Android experience.
 - **Hiro Gradle Plugin**: Helps users seamlessly transition third-party Compose packages to use Skia (Skiko)/Desktop modules (redirecting Android to use Skia (Skiko)/Desktop while blocking incoming dependencies on AndroidX Compose or the Android target of Compose Multiplatform).
-- **Examples**: Several sample projects demonstrating basic Hiro Compose, Hiro Compose Material 3, and Hiro Compose integrated with third-party libraries.
+- **Examples**, several sample projects: These serve not only as reference planes for my development and testing but also allow you to deeply experience and understand Hiro's capabilities across the board.
 - **[Whole App Example](https://github.com/EarzuChan/HiroWholeAppExample)**: A simple yet structurally complete application demonstrating the feasibility of using Hiro to develop functional applications.
 
 ## Getting Started

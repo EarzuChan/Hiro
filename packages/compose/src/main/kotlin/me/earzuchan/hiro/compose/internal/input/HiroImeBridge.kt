@@ -52,12 +52,7 @@ internal interface HiroImeHost {
 
     fun startSession(sessionId: Long, revision: Long, imeOptions: ImeOptions, snapshot: HiroImeSnapshot)
 
-    fun updateSession(
-        sessionId: Long,
-        revision: Long,
-        snapshot: HiroImeSnapshot,
-        acknowledgement: HiroImeEditAcknowledgement? = null,
-    )
+    fun updateSession(sessionId: Long, revision: Long, snapshot: HiroImeSnapshot, acknowledgement: HiroImeEditAcknowledgement? = null)
 
     fun rejectEdit(request: HiroImeEditRequest)
 
@@ -85,11 +80,10 @@ internal class HiroTextInputCoordinator(private val host: HiroImeHost) : Platfor
             coroutineScope {
                 launch {
                     snapshotFlow(session::snapshot).collect { snapshot ->
-                        if (activeSession === session) {
-                            host.updateSession(session.id, session.nextRevision(), snapshot)
-                        }
+                        if (activeSession === session) host.updateSession(session.id, session.nextRevision(), snapshot)
                     }
                 }
+
                 awaitCancellation()
             }
         } finally {
@@ -131,12 +125,7 @@ internal class HiroTextInputCoordinator(private val host: HiroImeHost) : Platfor
         return true
     }
 
-    override fun startInput(
-        value: TextFieldValue,
-        imeOptions: ImeOptions,
-        onEditCommand: (List<EditCommand>) -> Unit,
-        onImeActionPerformed: (ImeAction) -> Unit,
-    ) {
+    override fun startInput(value: TextFieldValue, imeOptions: ImeOptions, onEditCommand: (List<EditCommand>) -> Unit, onImeActionPerformed: (ImeAction) -> Unit) {
         LegacySession(
             id = NEXT_SESSION_ID.incrementAndGet(),
             value = value,
@@ -161,36 +150,24 @@ internal class HiroTextInputCoordinator(private val host: HiroImeHost) : Platfor
 
     override fun hideSoftwareKeyboard() = host.requestHideKeyboard()
 
-    override fun updateState(oldValue: TextFieldValue?, newValue: TextFieldValue) {
-        updateLegacy { it.value = newValue }
-    }
+    override fun updateState(oldValue: TextFieldValue?, newValue: TextFieldValue) = updateLegacy { it.value = newValue }
 
-    override fun notifyFocusedRect(rect: Rect) {
-        updateLegacy { it.focusedRectInRoot = rect }
-    }
+    override fun notifyFocusedRect(rect: Rect) = updateLegacy { it.focusedRectInRoot = rect }
 
-    override fun updateTextLayoutResult(
-        textFieldValue: TextFieldValue,
-        offsetMapping: OffsetMapping,
-        textLayoutResult: TextLayoutResult,
-        textFieldToRootTransform: (Matrix) -> Unit,
-        innerTextFieldBounds: Rect,
-        decorationBoxBounds: Rect,
-    ) {
-        updateLegacy { session ->
-            val matrix = Matrix().also(textFieldToRootTransform)
-            session.value = textFieldValue
-            session.textLayoutResult = textLayoutResult
-            session.offsetMapping = offsetMapping
-            session.textLayoutToRootTransform = matrix
-            session.textClippingRectInText = innerTextFieldBounds
-            session.textFieldRectInText = decorationBoxBounds
-            session.textFieldRectInRoot = matrix.map(decorationBoxBounds)
-            session.textClippingRectInRoot = matrix.map(innerTextFieldBounds)
-            val cursorOffset = offsetMapping.originalToTransformed(textFieldValue.selection.max)
-            session.focusedRectInRoot = matrix.map(textLayoutResult.getCursorRect(cursorOffset))
-            session.unclippedTextOffsetInRoot = session.textClippingRectInRoot?.topLeft?.minus(innerTextFieldBounds.topLeft)
-        }
+    override fun updateTextLayoutResult(textFieldValue: TextFieldValue, offsetMapping: OffsetMapping, textLayoutResult: TextLayoutResult, textFieldToRootTransform: (Matrix) -> Unit, innerTextFieldBounds: Rect, decorationBoxBounds: Rect) = updateLegacy { session ->
+        val matrix = Matrix().also(textFieldToRootTransform)
+        session.value = textFieldValue
+        session.textLayoutResult = textLayoutResult
+        session.offsetMapping = offsetMapping
+        session.textLayoutToRootTransform = matrix
+        session.textClippingRectInText = innerTextFieldBounds
+        session.textFieldRectInText = decorationBoxBounds
+        session.textFieldRectInRoot = matrix.map(decorationBoxBounds)
+        session.textClippingRectInRoot = matrix.map(innerTextFieldBounds)
+
+        val cursorOffset = offsetMapping.originalToTransformed(textFieldValue.selection.max)
+        session.focusedRectInRoot = matrix.map(textLayoutResult.getCursorRect(cursorOffset))
+        session.unclippedTextOffsetInRoot = session.textClippingRectInRoot?.topLeft?.minus(innerTextFieldBounds.topLeft)
     }
 
     private fun activate(session: ActiveSession) {
@@ -204,6 +181,7 @@ internal class HiroTextInputCoordinator(private val host: HiroImeHost) : Platfor
 
     private fun deactivate(session: ActiveSession) {
         if (activeSession !== session) return
+
         activeSession = null
         if (legacySession === session) legacySession = null
         host.stopSession(session.id)
@@ -211,6 +189,7 @@ internal class HiroTextInputCoordinator(private val host: HiroImeHost) : Platfor
 
     private inline fun updateLegacy(update: (LegacySession) -> Unit) {
         val session = legacySession?.takeIf { activeSession === it } ?: return
+
         update(session)
         if (editInProgress?.sessionId == session.id) return
         host.updateSession(
@@ -258,13 +237,7 @@ internal class HiroTextInputCoordinator(private val host: HiroImeHost) : Platfor
         }
     }
 
-    private class LegacySession(
-        id: Long,
-        var value: TextFieldValue,
-        imeOptions: ImeOptions,
-        private val onEditCommandCallback: (List<EditCommand>) -> Unit,
-        private val onImeActionCallback: (ImeAction) -> Unit,
-    ) : ActiveSession(id, imeOptions) {
+    private class LegacySession(id: Long, var value: TextFieldValue, imeOptions: ImeOptions, private val onEditCommandCallback: (List<EditCommand>) -> Unit, private val onImeActionCallback: (ImeAction) -> Unit) : ActiveSession(id, imeOptions) {
         var focusedRectInRoot: Rect? = null
         var textFieldRectInRoot: Rect? = null
         var textClippingRectInRoot: Rect? = null
