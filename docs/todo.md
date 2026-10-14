@@ -1,16 +1,16 @@
 # 待办
 
-- 内建各组件的关键点Log，以及基于Debug/Release的启用性门控
-- Compose：ViewModel、LifeCycle、SavedState的支持基本完成，接下来是R和Res
-- BuildLogic优化：是否需要再简化代码？黑曼巴
-- Skiko 可以变成 Processed Jar，且这同CMP都可以再屏蔽些类
-- 斜窗正家具：View的Transform，而里面HiroCompose渲染画面仍是正的。是否要同步，或者是可配置，有待讨论
-- 重建活动，Activity VM 实例能做到不变，而 Hiro VM 实例改变。这虽是预期行为，但有没有要改的
-- Input手感调优：AI说可接ViewCfg里的参数，有必要吗
-- IME与TextField、剪贴板正常性：基本OK，差手写、更多Input接入（虚拟触控板、键盘）什么的高级功能，暂不考虑做
-- 考虑本机库、Compose的减小化、可被Tree-shake和架构裁剪：目前已基本减小化，看看有没有什么稳定性问题
-- 客制化：各方面的`更好的用户自定义入口`：基本完成，HiroCfg
-- HGP优化：基本OK。考虑是否引入剥离豁免
-- Sysbar适配：基本完成。Sysbar的颜色问题？（这是AndroidX的锅还是我的）。Insets 未来可看是否做 ViewPort Relative NEW API？再说
-- 测试液态玻璃和Miuix：已跑通
-- 切换系统颜色导致Compose重置（可能是Activity重开）。但其实有办法让Activity不重开，想办法解决一下：这个是具体App的Change问题，改清单耳
+- [ ] 内建各组件的关键点Log，以及基于Debug/Release的启用性门控
+- [ ] Compose：ViewModel、LifeCycle、SavedState的支持基本完成，接下来是R和Res
+- [-] BuildLogic优化：是否需要再简化代码？黑曼巴
+- [-] Skiko 可以变成 Processed Jar，且这同CMP都可以再屏蔽些类
+- [ ] 斜窗正家具：View的Transform，而里面HiroCompose渲染画面仍是正的。是否要同步，或者是可配置，有待讨论
+- [-] 重建活动，Activity VM 实例能做到不变，而 Hiro VM 实例改变。这虽是预期行为，但有没有要改的
+- [-] Input手感调优：AI说可接ViewCfg里的参数，有必要吗
+- [-]IME与TextField、剪贴板正常性：基本OK，差手写、更多Input接入（虚拟触控板、键盘）什么的高级功能，暂不考虑做；另输入法顶起视图的问题
+- [X] 考虑本机库、Compose的减小化、可被Tree-shake和架构裁剪：目前已基本减小化，看看有没有什么稳定性问题
+- [-] 客制化：各方面的`更好的用户自定义入口`：基本完成，HiroCfg
+- [-] HGP优化：基本OK。考虑是否引入剥离豁免
+- [-] Sysbar适配：基本完成。Sysbar的颜色问题？（这是AndroidX的锅还是我的）。Insets 未来可看是否做 ViewPort Relative NEW API？再说
+- [X] 测试液态玻璃和Miuix：已跑通
+- [X] 切换系统颜色导致Compose重置（可能是Activity重开）。但其实有办法让Activity不重开，想办法解决一下：这个是具体App的Change问题，改清单耳

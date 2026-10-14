@@ -117,6 +117,8 @@ Hiro 不隔离 ClassLoader，也不克隆基础架构类型。Android 与 Hiro �
 
 “两条核心线程”特指 Hiro Compose 关键路径上的两个线程所有权域，并不表示应用进程不能存在 IO、网络或业务工作线程。
 
+同一进程内的多个 Hiro View 共用一个 EGL 执行器、Skia DirectContext 和渲染线程，各自持有 Scene、Owner 与 Surface；最后一个渲染目标释放后，共享线程退出。
+
 ```mermaid
 flowchart LR
     subgraph Android["Android 行政区 · 主线程"]
@@ -171,7 +173,7 @@ flowchart LR
 
 ### 启动
 
-`setContent` 可以先于渲染线程和 Surface 就绪。内容会先进入命令邮箱，直到渲染线程可用并且存在有效 Viewport 后才创建 Scene。
+`setContent` 可以先于挂载。内容先保存在 View 中，挂载时创建 `HiroComposeHostSession` 并投递到命令邮箱；渲染线程可用且 Viewport 为正尺寸后才创建 Scene。
 
 ```mermaid
 sequenceDiagram
@@ -183,8 +185,10 @@ sequenceDiagram
     participant Scene as HiroSkiaComposeScene
 
     Main->>View: 创建并 setContent
-    View->>Mailbox: 保存 SetContent 命令
+    View->>View: 保存内容
     Main->>View: onAttachedToWindow
+    View->>View: 创建宿主会话
+    View->>Mailbox: 投递 SetContent 命令
     View->>View: 挂载 Lifecycle、SavedState、Back 桥
     View->>Layer: attachTo
     Main->>View: onSizeChanged
@@ -199,7 +203,9 @@ Scene 创建的关键前置条件是“渲染线程可执行任务”与“Viewp
 
 ### 关闭
 
-关闭是单向且不可逆的。主线程先封闭输入端，再阻塞等待渲染线程完成资源销毁，最后拆除 Android 宿主桥。
+宿主会话的关闭不可逆：主线程先封闭输入端，再阻塞等待渲染线程完成资源销毁，最后拆除 Android 宿主桥。
+
+View 脱离时只销毁当前会话，重新挂载会创建新会话、Scene 与 Owner，并从最近的 SavedState 检查点恢复。显式 `close()` 或宿主销毁才永久关闭 View。
 
 ```mermaid
 sequenceDiagram
@@ -214,7 +220,7 @@ sequenceDiagram
     Main->>Controller: beginClose
     Controller->>Controller: 状态进入 Closing，拒绝新命令
     Main->>Layer: close
-    Layer->>Render: releaseOnRenderThread
+    Layer->>Render: 释放当前渲染目标
     Render->>Controller: onRenderThreadClosing
     Controller->>Controller: 清空命令邮箱
     Controller->>Scene: close
@@ -332,7 +338,7 @@ Hiro Lifecycle 的不变量：
 
 ## 按需直通帧循环
 
-Hiro 使用 `RENDERMODE_WHEN_DIRTY`。没有失效、输入或平台状态变化时，不持续空转绘制。
+`HiroSkiaSurfaceView` 基于 `SurfaceView`，自行合并帧请求，经 Choreographer 驱动共享 EGL 渲染线程。没有失效、输入或平台状态变化时，不持续空转绘制。
 
 ```mermaid
 sequenceDiagram
@@ -347,7 +353,7 @@ sequenceDiagram
     Layer->>Main: 合并为一次待安排帧
     Main->>Choreographer: postFrameCallback
     Choreographer->>Main: doFrame(nanoTime)
-    Main->>Render: GLSurfaceView.requestRender
+    Main->>Render: HiroSharedEglRenderTarget.requestRender
     Render->>Render: 消费帧时间与本轮命令快照
     Render->>Compose: Snapshot Apply、重组、Measure、Layout
     Render->>GPU: ComposeScene.render 当前 Canvas
@@ -476,10 +482,11 @@ flowchart LR
 
 ## 相关主要代码
 
-- [HiroComposeView](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/HiroComposeView.kt)：Android 宿主入口、平台状态采集与生命周期映射
+- [HiroComposeView](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/HiroComposeView.kt)：Android 宿主入口、内容保存与会话挂载
+- [HiroComposeHostSession](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/HiroComposeHostSession.kt)：宿主会话、平台状态采集与生命周期映射
 - [HiroComposeRenderController](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/HiroComposeRenderController.kt)：跨线程命令边界与 Compose 控制器状态机
 - [HiroComposeCommandMailbox](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/HiroComposeCommandMailbox.kt)：命令保序、批次快照与 MOVE 合流
-- [HiroSkiaComposeScene](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/HiroSkiaComposeScene.kt)：ComposeScene、CompositionLocal 与 Skia Canvas 直通
+- [HiroSkiaComposeScene](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/HiroSkiaComposeScene.kt)：ComposeScene、CompositionLocal 与 Skia Canvas 直通
 - [HiroGoldenMambaContext](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/HiroGoldenMambaContext.kt)：Hiro 的 `PlatformContext` 实现，金曼巴这一块
 - [HiroArchitectureComponentsOwner](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/architecture/HiroArchitectureComponentsOwner.kt)：Hiro Lifecycle、ViewModelStore、Navigation 与 SavedState Owner
 - [HiroAndroidHostBridge](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/architecture/HiroAndroidHostBridge.kt)：Android Lifecycle、Back 与 SavedState 宿主桥

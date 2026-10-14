@@ -56,12 +56,12 @@
    implementation("me.earzuchan.hiro:compose:<VERSION>")
    ```
    *关于其他模块的说明：*
-   * **Hiro Skia**：`hiro:compose` 内部使用了 `hiro:skia`，但未将其 API 显式暴露给您的项目。如需直接访问 Skia API（高级用法），须显式添加该依赖。
+   * **Hiro Skia**：`hiro:compose` 已传递暴露其 API，使用 Hiro Compose 时无需显式再引入其依赖；仅在独立使用 Skia 时需显式引入。
    * **Hiro Material 3**：Material 3 未捆绑在 `hiro:compose` 中。如需使用它们，须添加此模块。
    ```kotlin
    // 仅在需要时添加：
-   implementation("me.earzuchan.hiro:skia:<VERSION>") // 用于直接调用 Hiro Skia API
-   implementation("me.earzuchan.hiro:material-3:<VERSION>") // 用于使用 Material 3 组件
+   implementation("me.earzuchan.hiro:skia:<VERSION>") // 用于独立使用 Hiro Skia
+   implementation("me.earzuchan.hiro:material3:<VERSION>") // 用于使用 Material 3 组件
    ```
 5. 使用方法：在您的 Activity 中导入 `me.earzuchan.hiro.compose.setHiroComposeContent`，然后在 `onCreate` 中使用：
    ```kotlin
