@@ -1,106 +1,43 @@
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+
 package me.earzuchan.hiro.material3.ripple
 
-import android.util.Log
-import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.material.ripple.RippleAlpha
-import androidx.compose.ui.Modifier
+import androidx.compose.material3.internal.ripple.RippleNode
+import androidx.compose.material3.internal.ripple.RippleNodeConfig
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorProducer
-import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
-import androidx.compose.ui.node.DrawModifierNode
-import androidx.compose.ui.node.LayoutAwareModifierNode
 import androidx.compose.ui.node.invalidateDraw
-import androidx.compose.ui.node.requireDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.isUnspecified
-import androidx.compose.ui.unit.toSize
 import kotlinx.coroutines.launch
+import me.earzuchan.hiro.log.HiroLog
 
-class HiroRippleNode(private val interactionSource: InteractionSource, private val bounded: Boolean, private val radius: Dp, private val color: ColorProducer, private val rippleAlpha: () -> RippleAlpha) : Modifier.Node(), CompositionLocalConsumerModifierNode, DrawModifierNode, LayoutAwareModifierNode {
-    override val shouldAutoInvalidate: Boolean = false
-
+// TIPS：悬浮、焦点、拖动的状态层与焦点环由上游 RippleNode 统一处理，Hiro 只接管按压波纹的着色器绘制
+internal class HiroRippleNode(interactionSource: InteractionSource, bounded: Boolean, radius: Dp, color: ColorProducer, rippleNodeConfig: () -> RippleNodeConfig) : RippleNode(interactionSource, bounded, radius, color, rippleNodeConfig) {
     private val ripples = linkedMapOf<PressInteraction.Press, HiroRippleSession>()
-    private var stateLayer: HiroRippleStateLayer? = null
-    private var hasValidSize = false
-    private var targetRadius = 0f
-    private var rippleSize = Size.Zero
-    private val pendingInteractions = mutableListOf<PressInteraction>()
 
     companion object {
         private const val TAG = "HiroRippleNode"
     }
 
-    override fun onAttach() {
-        Log.d(TAG, "将贴附")
-
-        coroutineScope.launch {
-            interactionSource.interactions.collect { interaction ->
-                when (interaction) {
-                    is PressInteraction -> handlePressInteractionWhenReady(interaction)
-
-                    else -> updateStateLayer(interaction, this)
-                }
-            }
-        }
-    }
-
     override fun onRemeasured(size: IntSize) {
-        val nextRippleSize = size.toSize()
-        val sizeChanged = rippleSize != nextRippleSize
-        if (sizeChanged) Log.d(TAG, "节点尺寸改变：${nextRippleSize.width}x${nextRippleSize.height}")
+        super.onRemeasured(size)
 
-        hasValidSize = true
-        rippleSize = nextRippleSize
-        targetRadius = with(requireDensity()) { if (radius.isUnspecified) getHiroRippleEndRadius(bounded, rippleSize) else radius.toPx() }
-
-        if (sizeChanged || pendingInteractions.isNotEmpty()) Log.d(TAG, "波纹几何更新：半径=$targetRadius，暂存交互=${pendingInteractions.size}")
         ripples.values.forEach { session -> session.updateGeometry(rippleSize, targetRadius) }
-        pendingInteractions.forEach(::handlePressInteraction)
-        pendingInteractions.clear()
     }
 
-    override fun ContentDrawScope.draw() {
-        drawContent()
-        stateLayer?.run { drawStateLayer(targetRadius, rippleColor) }
-        drawRipples()
-    }
-
-    override fun onDetach() {
-        Log.d(TAG, "将脱离")
-
-        ripples.values.forEach { session -> session.finish() }
-        ripples.clear()
-    }
-
-    private val rippleColor: Color get() = color()
-
-    private fun handlePressInteractionWhenReady(interaction: PressInteraction) {
-        if (hasValidSize) handlePressInteraction(interaction) else pendingInteractions.add(interaction).also { Log.d(TAG, "交互等待节点尺寸：${interaction.name()}") }
-    }
-
-    private fun handlePressInteraction(interaction: PressInteraction) {
-        when (interaction) {
-            is PressInteraction.Press -> addRipple(interaction)
-            is PressInteraction.Release -> removeRipple(interaction.press)
-            is PressInteraction.Cancel -> removeRipple(interaction.press)
-        }
-    }
-
-    private fun addRipple(interaction: PressInteraction.Press) {
-        Log.d(TAG, "将添加波纹：${interaction.pressPosition}，尺寸=${rippleSize.width}x${rippleSize.height}，半径=$targetRadius，当前数=${ripples.size}")
+    override fun addRipple(interaction: PressInteraction.Press, size: Size, targetRadius: Float) {
+        HiroLog.v(TAG) { "将添加波纹：${interaction.pressPosition}，尺寸=${size.width}x${size.height}，半径=$targetRadius，当前数=${ripples.size}" }
 
         ripples.values.forEach { session -> session.finish() }
 
-        val touch = if (bounded) interaction.pressPosition else rippleSize.center
-        val session = HiroRippleSession(rippleSize = rippleSize, touch = touch, targetRadius = targetRadius)
+        val touch = if (bounded) interaction.pressPosition else size.center
+        val session = HiroRippleSession(rippleSize = size, touch = touch, targetRadius = targetRadius)
         ripples[interaction] = session
 
         coroutineScope.launch {
@@ -115,29 +52,20 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
         invalidateDraw()
     }
 
-    private fun removeRipple(interaction: PressInteraction.Press) {
-        Log.d(TAG, "将移除波纹：${interaction.name()}，命中=${ripples.containsKey(interaction)}，当前数=${ripples.size}")
-
+    override fun removeRipple(interaction: PressInteraction.Press) {
         ripples[interaction]?.finish()
     }
 
-    private fun updateStateLayer(interaction: Interaction, scope: kotlinx.coroutines.CoroutineScope) {
-        val layer = stateLayer ?: HiroRippleStateLayer(
-            bounded = bounded,
-            draggedAlpha = { rippleAlpha().draggedAlpha },
-            focusedAlpha = { rippleAlpha().focusedAlpha },
-            hoveredAlpha = { rippleAlpha().hoveredAlpha },
-        ).also { stateLayer = it }
+    override fun DrawScope.drawRipples() {
+        val alpha = when (val press = rippleNodeConfig().press) {
+            is RippleNodeConfig.Press.Opacity -> press.alpha
 
-        layer.handleInteraction(interaction, scope)
-        invalidateDraw()
-    }
+            else -> 0f
+        }
+        if (alpha <= 0f || targetRadius <= 0f || rippleSize == Size.Zero || ripples.isEmpty()) return
 
-    private fun DrawScope.drawRipples() {
-        val alpha = rippleAlpha().pressedAlpha
-        if (alpha <= 0f || targetRadius <= 0f || rippleSize == Size.Zero) return
-
-        val modulatedColor = rippleColor.copy(alpha = rippleColor.alpha * alpha)
+        val color = rippleColor
+        val modulatedColor = color.copy(alpha = color.alpha * alpha)
         val drawBlock: DrawScope.() -> Unit = {
             ripples.values.forEach { session ->
                 val brush = HiroRippleShader.createBrush(
@@ -155,13 +83,13 @@ class HiroRippleNode(private val interactionSource: InteractionSource, private v
 
         if (bounded) clipRect(block = drawBlock) else drawBlock()
     }
+
+    override fun onDetach() {
+        super.onDetach()
+
+        ripples.values.forEach { session -> session.finish() }
+        ripples.clear()
+    }
 }
 
 private val Size.center: Offset get() = Offset(width / 2f, height / 2f)
-
-private fun PressInteraction.name() = when (this) {
-    is PressInteraction.Press -> "按下"
-    is PressInteraction.Release -> "释放"
-    is PressInteraction.Cancel -> "取消"
-    else -> "未知"
-}

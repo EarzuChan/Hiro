@@ -1,7 +1,6 @@
 package me.earzuchan.hiro.compose.internal.windowinsets
 
 import android.graphics.Rect as AndroidRect
-import android.util.Log
 import android.view.View
 import androidx.compose.ui.geometry.Rect
 import androidx.core.graphics.Insets as AndroidXInsets
@@ -12,6 +11,7 @@ import androidx.core.view.WindowInsetsCompat
 import me.earzuchan.hiro.compose.internal.util.logText
 import me.earzuchan.hiro.compose.windowinsets.HiroInsetsValues
 import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
+import me.earzuchan.hiro.log.HiroLog
 
 internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (HiroWindowInsetsSnapshot) -> Unit) : AutoCloseable {
     private var hostView: View? = null
@@ -40,7 +40,7 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (Hir
         ViewCompat.setOnApplyWindowInsetsListener(view, insetsListener)
         ViewCompat.setWindowInsetsAnimationCallback(view, animationCallback)
 
-        Log.d(TAG, "已挂载")
+        HiroLog.d(TAG) { "已挂载" }
 
         readCurrentInsets(view)
         requestApplyInsets(view)
@@ -53,7 +53,7 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (Hir
     override fun close() {
         val view = hostView ?: return
 
-        Log.d(TAG, "已卸载")
+        HiroLog.d(TAG) { "已卸载" }
 
         ViewCompat.setWindowInsetsAnimationCallback(view, null)
         ViewCompat.setOnApplyWindowInsetsListener(view, null)
@@ -70,7 +70,7 @@ internal class HiroWindowInsetsFiddlerForAndroid(private val changeWatcher: (Hir
         val snapshot = insets.toHiroSnapshot()
         if (lastSnapshot == snapshot) return
         lastSnapshot = snapshot
-        Log.d(TAG, "窗口Insets变化：状态栏=${snapshot.statusBars.logText()}，导航栏=${snapshot.navigationBars.logText()}，IME=${snapshot.ime.logText()}，刘海数=${snapshot.displayCutouts.size}")
+        HiroLog.d(TAG) { "窗口Insets变化：状态栏=${snapshot.statusBars.logText()}，导航栏=${snapshot.navigationBars.logText()}，IME=${snapshot.ime.logText()}，刘海数=${snapshot.displayCutouts.size}" }
         changeWatcher(snapshot)
     }
 }

@@ -10,23 +10,23 @@ plugins {
 }
 
 val composeJar = processToHiroJar("compose") {
-    // 版本对齐 CMP 1.11.1 大版本。坐标和版本须跟随上游 CMP 所使用的来
+    // 版本对齐 CMP 1.12.2 大版本。坐标和版本须跟随上游 CMP 所使用的来
     artifacts(
-        "androidx.compose.runtime:runtime-desktop:1.11.2",
-        "androidx.compose.runtime:runtime-saveable-desktop:1.11.2",
-        "androidx.compose.runtime:runtime-retain-desktop:1.11.2",
-        "androidx.compose.runtime:runtime-annotation-jvm:1.11.2",
-        "org.jetbrains.compose.animation:animation-core-desktop:1.11.1",
-        "org.jetbrains.compose.animation:animation-desktop:1.11.1",
-        "org.jetbrains.compose.foundation:foundation-desktop:1.11.1",
-        "org.jetbrains.compose.foundation:foundation-layout-desktop:1.11.1",
-        "org.jetbrains.compose.ui:ui-backhandler-desktop:1.11.1",
-        "org.jetbrains.compose.ui:ui-desktop:1.11.1",
-        "org.jetbrains.compose.ui:ui-geometry-desktop:1.11.1",
-        "org.jetbrains.compose.ui:ui-graphics-desktop:1.11.1",
-        "org.jetbrains.compose.ui:ui-text-desktop:1.11.1",
-        "org.jetbrains.compose.ui:ui-unit-desktop:1.11.1",
-        "org.jetbrains.compose.ui:ui-util-desktop:1.11.1"
+        "androidx.compose.runtime:runtime-desktop:1.12.1",
+        "androidx.compose.runtime:runtime-saveable-desktop:1.12.1",
+        "androidx.compose.runtime:runtime-retain-desktop:1.12.1",
+        "androidx.compose.runtime:runtime-annotation-jvm:1.12.1",
+        "org.jetbrains.compose.animation:animation-core-desktop:1.12.2",
+        "org.jetbrains.compose.animation:animation-desktop:1.12.2",
+        "org.jetbrains.compose.foundation:foundation-desktop:1.12.2",
+        "org.jetbrains.compose.foundation:foundation-layout-desktop:1.12.2",
+        "org.jetbrains.compose.ui:ui-backhandler-desktop:1.12.2",
+        "org.jetbrains.compose.ui:ui-desktop:1.12.2",
+        "org.jetbrains.compose.ui:ui-geometry-desktop:1.12.2",
+        "org.jetbrains.compose.ui:ui-graphics-desktop:1.12.2",
+        "org.jetbrains.compose.ui:ui-text-desktop:1.12.2",
+        "org.jetbrains.compose.ui:ui-unit-desktop:1.12.2",
+        "org.jetbrains.compose.ui:ui-util-desktop:1.12.2"
     )
 
     // 处理
@@ -92,7 +92,6 @@ val composeJar = processToHiroJar("compose") {
 
     requireJarEntry(
         "androidx/compose/ui/scene/CanvasLayersComposeScene_skikoKt.class",
-        "androidx/compose/ui/scene/ComposeSceneRecomposer.class",
         "androidx/compose/ui/graphics/SkiaBackedCanvas.class",
         "androidx/compose/ui/graphics/SkiaBackedCanvas_skikoKt.class",
         "androidx/compose/ui/ComposeUiFlags_skikoKt.class",
@@ -109,7 +108,6 @@ val composeJar = processToHiroJar("compose") {
         "javafx/",
         "androidx/compose/ui/awt/",
         "org/jetbrains/skiko/awt/",
-        "androidx/compose/ui/platform/GlobalSnapshotManager_desktopKt.class",
         "androidx/compose/ui/Actuals_desktopKt.class",
         "androidx/compose/ui/platform/PlatformUriHandler_desktopKt.class",
         "androidx/compose/ui/platform/DesktopUriHandler",
@@ -141,9 +139,9 @@ val architectureComposeAdaptersJar = processToHiroJar("architecture-compose-adap
     // 适配层保留原包名和 API，由 Hiro 统一提供；基础状态类型仍使用 Android 官方实现
 
     artifacts(
-        "androidx.lifecycle:lifecycle-runtime-compose-desktop:2.10.0",
-        "androidx.lifecycle:lifecycle-viewmodel-compose-android:2.10.0",
-        "androidx.lifecycle:lifecycle-viewmodel-navigation3-android:2.10.0",
+        "androidx.lifecycle:lifecycle-runtime-compose-desktop:2.11.0",
+        "androidx.lifecycle:lifecycle-viewmodel-compose-android:2.11.0",
+        "androidx.lifecycle:lifecycle-viewmodel-navigation3-android:2.11.0",
         "androidx.savedstate:savedstate-compose-desktop:1.4.0"
     )
 
@@ -152,7 +150,6 @@ val architectureComposeAdaptersJar = processToHiroJar("architecture-compose-adap
     dropPathPrefix(
         "androidx/lifecycle/compose/FlowExtKt",
         "androidx/lifecycle/compose/ComposeLifecycleOwner.class",
-        "androidx/lifecycle/viewmodel/compose/LocalViewModelStoreOwner_androidKt.class",
         "androidx/lifecycle/viewmodel/navigation3/ViewModelStoreNavEntryDecoratorDefaults.class"
     )
 
@@ -177,7 +174,6 @@ val architectureComposeAdaptersJar = processToHiroJar("architecture-compose-adap
         "androidx/compose/runtime/Composer.class",
         "androidx/lifecycle/compose/FlowExtKt",
         "androidx/lifecycle/compose/ComposeLifecycleOwner.class",
-        "androidx/lifecycle/viewmodel/compose/LocalViewModelStoreOwner_androidKt.class",
         "androidx/lifecycle/viewmodel/navigation3/ViewModelStoreNavEntryDecoratorDefaults.class",
         "androidx/lifecycle/Lifecycle.class",
         "androidx/lifecycle/ViewModel.class",
@@ -204,7 +200,10 @@ android {
     publishing { singleVariant("release") { withSourcesJar() } }
 }
 
-tasks.withType<KotlinCompile>().configureEach { compilerOptions.moduleName.set("hiro-compose") }
+tasks.withType<KotlinCompile>().configureEach {
+    compilerOptions.moduleName.set("hiro-compose")
+    compilerOptions.optIn.add("me.earzuchan.hiro.log.HiroInternalApi")
+}
 
 val excludePwned = Action<ExternalModuleDependency>  {
     exclude(group = "androidx.compose.runtime")
@@ -245,9 +244,9 @@ dependencies {
 
     // 基础状态类型由 Android 与 Hiro 共用，不属于 Hiro 接管模块
     api("androidx.savedstate:savedstate:1.4.0", dependencyConfiguration = excludePwned)
-    api("androidx.lifecycle:lifecycle-runtime:2.10.0", dependencyConfiguration = excludePwned)
-    api("androidx.lifecycle:lifecycle-viewmodel:2.10.0", dependencyConfiguration = excludePwned)
-    api("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.10.0", dependencyConfiguration = excludePwned)
+    api("androidx.lifecycle:lifecycle-runtime:2.11.0", dependencyConfiguration = excludePwned)
+    api("androidx.lifecycle:lifecycle-viewmodel:2.11.0", dependencyConfiguration = excludePwned)
+    api("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.11.0", dependencyConfiguration = excludePwned)
 
     testImplementation(kotlin("test-junit"))
 }

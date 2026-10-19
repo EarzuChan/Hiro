@@ -40,5 +40,5 @@ dependencies {
     implementation(libs.androidx.activity)
 
     // 3rd deps
-    implementation("io.github.kyant0:backdrop:2.0.0")
+    implementation("io.github.kyant0:backdrop:2.0.1")
 }

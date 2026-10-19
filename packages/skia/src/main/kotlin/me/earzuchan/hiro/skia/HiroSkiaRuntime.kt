@@ -2,6 +2,7 @@ package me.earzuchan.hiro.skia
 
 import android.content.Context
 import android.os.Process
+import me.earzuchan.hiro.log.HiroLogging
 import org.jetbrains.skiko.Library
 import java.io.File
 import java.io.FileOutputStream
@@ -26,6 +27,7 @@ object HiroSkiaRuntime {
     private var icuData: ByteBuffer? = null
 
     fun initialize(context: Context) {
+        HiroLogging.attach(context)
         if (initialized) return
 
         synchronized(this) {

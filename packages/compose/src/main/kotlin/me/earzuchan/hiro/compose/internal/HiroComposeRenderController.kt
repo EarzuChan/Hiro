@@ -1,6 +1,5 @@
 package me.earzuchan.hiro.compose.internal
 
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.KeyEvent
@@ -23,6 +22,7 @@ import me.earzuchan.hiro.skia.HiroSkiaRenderLifecycleDelegate
 import org.jetbrains.skia.Canvas
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import me.earzuchan.hiro.log.HiroLog
 
 private data class HiroComposePlatformState(
     val environment: HiroComposeEnvironment,
@@ -80,7 +80,7 @@ internal class HiroComposeRenderController(private val layer: HiroSkiaLayer, ini
             HiroViewKeyEventRequest.Result.Unhandled,
             HiroViewKeyEventRequest.Result.Cancelled -> false
             HiroViewKeyEventRequest.Result.ClaimedTimeout -> {
-                Log.w(TAG, "View 键事件已被渲染线程认领但未及时完成，按已消费处理")
+                HiroLog.w(TAG) { "View 键事件已被渲染线程认领但未及时完成，按已消费处理" }
                 true
             }
         }

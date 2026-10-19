@@ -1,6 +1,5 @@
 package me.earzuchan.hiro.compose.internal.architecture
 
-import android.util.Log
 import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.findViewTreeOnBackPressedDispatcherOwner
@@ -11,6 +10,7 @@ import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import me.earzuchan.hiro.compose.internal.util.checkMainThreadForHiroCompose
+import me.earzuchan.hiro.log.HiroLog
 
 internal class HiroAndroidHostBridge(private val savedStateTransport: HiroSavedStateTransport, private val savedStateKey: String?, private val onLifecycleChanged: () -> Unit, private val onNavigationBack: () -> Boolean) : AutoCloseable {
     private var view: View? = null
@@ -43,7 +43,7 @@ internal class HiroAndroidHostBridge(private val savedStateTransport: HiroSavedS
 
         val navigationBackOwner = view.findViewTreeOnBackPressedDispatcherOwner()
         if (navigationBackOwner != null) navigationBackOwner.onBackPressedDispatcher.addCallback(navigationBackCallback)
-        else Log.w(TAG, "宿主没有 OnBackPressedDispatcherOwner，Hiro Compose 无法接收安卓系统返回事件")
+        else HiroLog.w(TAG) { "宿主没有 OnBackPressedDispatcherOwner，Hiro Compose 无法接收安卓系统返回事件" }
 
         val savedStateOwner = view.findViewTreeSavedStateRegistryOwner()
         val providerKey = savedStateKey?.let { "$SAVED_STATE_KEY_PREFIX:$it" }
@@ -55,12 +55,12 @@ internal class HiroAndroidHostBridge(private val savedStateTransport: HiroSavedS
             savedStateOwner.savedStateRegistry.registerSavedStateProvider(providerKey, savedStateTransport::savedStateForAndroid)
             savedStateRegistryOwner = savedStateOwner
             savedStateProviderKey = providerKey
-        } else if (savedStateOwner == null) Log.w(TAG, "宿主没有 SavedStateRegistryOwner，本次 Hiro Compose View 只能保存内存状态")
-        else Log.w(TAG, "HiroComposeView 没有稳定 SavedState key，本次只能保存内存状态；请设置稳定 View ID 或显式 key")
+        } else if (savedStateOwner == null) HiroLog.w(TAG) { "宿主没有 SavedStateRegistryOwner，本次 Hiro Compose View 只能保存内存状态" }
+        else HiroLog.w(TAG) { "HiroComposeView 没有稳定 SavedState key，本次只能保存内存状态；请设置稳定 View ID 或显式 key" }
 
-        if (lifecycleOwner == null) Log.w(TAG, "宿主没有 LifecycleOwner，Hiro Compose 将仅使用 View 可见性驱动生命周期")
+        if (lifecycleOwner == null) HiroLog.w(TAG) { "宿主没有 LifecycleOwner，Hiro Compose 将仅使用 View 可见性驱动生命周期" }
         if (lifecycleOwner == null || navigationBackOwner == null || savedStateOwner == null) {
-            Log.w(TAG, "宿主没有提供完整的 AndroidX ViewTree Owner；通常建议从 ComponentActivity 调用 setHiroComposeContent，手动宿主则应自行安装对应 Owner")
+            HiroLog.w(TAG) { "宿主没有提供完整的 AndroidX ViewTree Owner；通常建议从 ComponentActivity 调用 setHiroComposeContent，手动宿主则应自行安装对应 Owner" }
         }
         onLifecycleChanged()
     }

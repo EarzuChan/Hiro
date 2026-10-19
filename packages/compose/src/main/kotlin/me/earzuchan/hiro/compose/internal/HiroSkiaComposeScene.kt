@@ -1,7 +1,6 @@
 package me.earzuchan.hiro.compose.internal
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
@@ -12,9 +11,11 @@ import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.platform.FrameRecomposer
 import androidx.compose.ui.platform.PlatformWindowInsets
 import androidx.compose.ui.scene.CanvasLayersComposeScene
 import androidx.compose.ui.scene.ComposeScene
+import androidx.compose.ui.scene.hasInvalidations
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.Lifecycle
@@ -32,6 +33,7 @@ import me.earzuchan.hiro.compose.internal.windowinsets.HiroMutablePlatformWindow
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
 import me.earzuchan.hiro.compose.windowinsets.HiroWindowInsetsSnapshot
 import org.jetbrains.skia.Canvas as SkiaCanvas
+import me.earzuchan.hiro.log.HiroLog
 
 @OptIn(InternalComposeUiApi::class)
 internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, private val dispatcher: HiroSkiaRenderDispatcher, initialEnvironment: HiroComposeEnvironment, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration, imeHost: HiroImeHost, private val focusBridge: HiroAndroidFocusBridge, androidPlatformServices: HiroAndroidPlatformServices) : AutoCloseable {
@@ -49,12 +51,18 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
 
     private val savedStateRegistryOwner = checkNotNull(platformContext.architectureComponentsOwner.savedStateRegistryOwner) { "Hiro Compose 没有可用的 SavedStateRegistryOwner" }
 
+    // TIPS：本帧渲染过程中引起的失效由帧末统一检查，避免渲染时反复请求下一帧
+    private var isRendering = false
+
+    private val frameRecomposer = FrameRecomposer(dispatcher, scheduleFrame)
+
     private val scene: ComposeScene = CanvasLayersComposeScene(
+        frameRecomposer = frameRecomposer,
         density = initialEnvironment.density,
         layoutDirection = initialEnvironment.layoutDirection,
-        coroutineContext = dispatcher,
         platformContext = platformContext,
-        invalidate = scheduleFrame,
+        invalidateLayout = ::onSceneInvalidation,
+        invalidateDraw = ::onSceneInvalidation,
     )
 
     private var currentSize: IntSize? = null
@@ -67,7 +75,7 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
 
     init {
         checkRenderThread()
-        Log.d(TAG, "已在渲染线程创建")
+        HiroLog.d(TAG) { "已在渲染线程创建" }
     }
 
     fun setContent(content: @Composable () -> Unit) {
@@ -111,7 +119,7 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
 
         currentSize = size
         scene.size = size
-        Log.d(TAG, "渲染尺寸改变：${size.width}x${size.height}")
+        HiroLog.d(TAG) { "渲染尺寸改变：${size.width}x${size.height}" }
         scheduleFrame()
     }
 
@@ -152,7 +160,7 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
 
         if (event.type != PointerEventType.Move) {
             val historicalCount = event.pointers.sumOf { it.historical.size }
-            Log.d(TAG, "指针事件注入：${event.type.name()}，指针数：${event.pointers.size}，历史点：$historicalCount")
+            HiroLog.v(TAG) { "指针事件注入：${event.type.name()}，指针数：${event.pointers.size}，历史点：$historicalCount" }
         }
 
         scene.sendPointerEvent(
@@ -212,7 +220,16 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
     fun render(canvas: SkiaCanvas, nanoTime: Long) {
         checkUsable()
 
-        scene.render(canvas.asComposeCanvas(), nanoTime)
+        isRendering = true
+        try {
+            frameRecomposer.performFrame(nanoTime)
+            scene.measureAndLayout()
+            scene.draw(canvas.asComposeCanvas())
+        } finally {
+            isRendering = false
+        }
+        if (scene.hasInvalidations()) scheduleFrame()
+
         focusBridge.publishFocusedRect(scene.focusManager.getFocusRect(afterLayout = false))
     }
 
@@ -236,13 +253,23 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
         }
 
         try {
+            frameRecomposer.close()
+        } catch (throwable: Throwable) {
+            failure?.addSuppressed(throwable) ?: run { failure = throwable }
+        }
+
+        try {
             platformContext.close()
         } catch (throwable: Throwable) {
             failure?.addSuppressed(throwable) ?: run { failure = throwable }
         }
 
-        Log.d(TAG, "已在渲染线程关闭")
+        HiroLog.d(TAG) { "已在渲染线程关闭" }
         failure?.let { throw it }
+    }
+
+    private fun onSceneInvalidation() {
+        if (!isRendering) scheduleFrame()
     }
 
     private fun checkUsable() {

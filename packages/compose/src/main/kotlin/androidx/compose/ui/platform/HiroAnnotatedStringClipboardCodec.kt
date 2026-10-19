@@ -5,7 +5,6 @@ import android.text.Annotation
 import android.text.SpannableString
 import android.text.Spanned
 import android.util.Base64
-import android.util.Log
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -19,6 +18,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
+import me.earzuchan.hiro.log.HiroLog
 
 internal object HiroAnnotatedStringClipboardCodec {
     fun encode(value: AnnotatedString): CharSequence {
@@ -43,7 +43,7 @@ internal object HiroAnnotatedStringClipboardCodec {
             val style = try {
                 decodeStyle(annotation.value)
             } catch (exception: RuntimeException) {
-                Log.w(TAG, "剪贴板中的 Compose 文本样式已损坏，本段样式已忽略", exception)
+                HiroLog.w(TAG, exception) { "剪贴板中的 Compose 文本样式已损坏，本段样式已忽略" }
                 return@mapNotNull null
             }
             AnnotatedString.Range(style, value.getSpanStart(annotation), value.getSpanEnd(annotation))

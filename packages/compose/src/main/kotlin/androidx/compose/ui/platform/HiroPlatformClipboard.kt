@@ -6,10 +6,10 @@ package androidx.compose.ui.platform
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager as AndroidClipboardManager
-import android.util.Log
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.text.AnnotatedString
 import me.earzuchan.hiro.compose.internal.HiroRenderDispatcherRegistry
+import me.earzuchan.hiro.log.HiroLog
 
 class ClipEntry @ExperimentalComposeUiApi constructor(
     @property:ExperimentalComposeUiApi val nativeClipEntry: Any,
@@ -37,7 +37,7 @@ private class HiroAndroidClipboardAccess(
     fun getClip(): ClipEntry? = try {
         native.primaryClip?.toClipEntry()
     } catch (exception: SecurityException) {
-        Log.w(TAG, "系统拒绝了剪贴板读取", exception)
+        HiroLog.w(TAG, exception) { "系统拒绝了剪贴板读取" }
         null
     }
 
@@ -45,7 +45,7 @@ private class HiroAndroidClipboardAccess(
         try {
             if (entry == null) native.clearPrimaryClip() else native.setPrimaryClip(entry.clipData)
         } catch (exception: SecurityException) {
-            Log.w(TAG, "系统拒绝了剪贴板写入", exception)
+            HiroLog.w(TAG, exception) { "系统拒绝了剪贴板写入" }
         }
     }
 
@@ -57,7 +57,7 @@ private class HiroAndroidClipboardAccess(
     fun hasText(): Boolean = try {
         native.hasPrimaryClip() && native.primaryClipDescription?.hasMimeType("text/*") == true
     } catch (exception: SecurityException) {
-        Log.w(TAG, "系统拒绝了剪贴板元数据读取", exception)
+        HiroLog.w(TAG, exception) { "系统拒绝了剪贴板元数据读取" }
         false
     }
 

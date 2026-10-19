@@ -2,7 +2,6 @@ package me.earzuchan.hiro.compose.internal.input
 
 import android.content.Context
 import android.os.Looper
-import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -13,6 +12,7 @@ import androidx.compose.ui.text.input.ImeOptions
 import androidx.core.view.SoftwareKeyboardControllerCompat
 import java.util.concurrent.atomic.AtomicLong
 import me.earzuchan.hiro.compose.internal.util.checkMainThreadForHiroCompose
+import me.earzuchan.hiro.log.HiroLog
 
 internal class HiroAndroidImeHost(private val view: View) : HiroImeHost, HiroAndroidInputConnection.Callbacks, AutoCloseable {
     private data class Session(
@@ -138,7 +138,7 @@ internal class HiroAndroidImeHost(private val view: View) : HiroImeHost, HiroAnd
     override fun requestCursorUpdates(mode: Int, filter: Int?): Boolean {
         val request = resolveCursorAnchorInfoRequest(mode, filter)
         if (request == null) {
-            Log.w(TAG, "IME 请求了不受支持的光标锚点更新标志：mode=$mode，filter=$filter")
+            HiroLog.w(TAG) { "IME 请求了不受支持的光标锚点更新标志：mode=$mode，filter=$filter" }
             return false
         }
         cursorAnchorInfoRequest = request
@@ -233,7 +233,7 @@ internal class HiroAndroidImeHost(private val view: View) : HiroImeHost, HiroAnd
         } catch (throwable: Throwable) {
             if (!loggedCursorAnchorFailure) {
                 loggedCursorAnchorFailure = true
-                Log.w(TAG, "无法构建 IME 光标锚点信息，本次更新已忽略", throwable)
+                HiroLog.w(TAG, throwable) { "无法构建 IME 光标锚点信息，本次更新已忽略" }
             }
         }
     }

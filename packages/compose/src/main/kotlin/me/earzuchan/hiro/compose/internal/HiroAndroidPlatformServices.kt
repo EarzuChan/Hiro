@@ -2,7 +2,6 @@ package me.earzuchan.hiro.compose.internal
 
 import android.content.Context
 import android.graphics.Rect as AndroidRect
-import android.util.Log
 import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
@@ -14,6 +13,7 @@ import androidx.core.view.isNotEmpty
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.ceil
 import kotlin.math.floor
+import me.earzuchan.hiro.log.HiroLog
 
 // CHECK：这个还有别的用武之地吗，除了一个小小的Toolbar
 internal class HiroAndroidPlatformServices(val view: View) {
@@ -163,7 +163,7 @@ private class HiroAndroidTextToolbar(private val view: View, private val dispatc
             cancelRestore()
             latestRequest = null
 
-            if (!dispatcher.tryDispatch(Runnable(action))) Log.w(TAG, "文本工具栏动作无法投递到 Hiro 渲染线程")
+            if (!dispatcher.tryDispatch(Runnable(action))) HiroLog.w(TAG) { "文本工具栏动作无法投递到 Hiro 渲染线程" }
 
             mode.finish()
             return true

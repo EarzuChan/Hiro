@@ -3,13 +3,13 @@ package me.earzuchan.hiro.skia
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Looper
-import android.util.Log
 import android.view.Choreographer
 import android.view.SurfaceView
 import android.view.ViewGroup
 import me.earzuchan.hiro.skia.util.checkHiroMainThread
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import me.earzuchan.hiro.log.HiroLog
 
 @SuppressLint("ViewConstructor")
 class HiroSkiaSurfaceView internal constructor(
@@ -43,7 +43,7 @@ class HiroSkiaSurfaceView internal constructor(
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         isFocusable = true
         isFocusableInTouchMode = true
-        Log.d(TAG, "被创建")
+        HiroLog.d(TAG) { "被创建" }
     }
 
     fun postToRenderThread(block: Runnable): Boolean = renderTarget.post(block)
@@ -65,7 +65,7 @@ class HiroSkiaSurfaceView internal constructor(
         cancelFrameCallbackOnMainThread()
         hostState = HiroSkiaHostState.Paused
         renderTarget.pauseBlocking(beforePause)
-        Log.d(TAG, "渲染目标已暂停")
+        HiroLog.d(TAG) { "渲染目标已暂停" }
     }
 
     internal fun resumeRenderThread(afterResume: Runnable) {
@@ -75,7 +75,7 @@ class HiroSkiaSurfaceView internal constructor(
         hostState = HiroSkiaHostState.Running
         renderTarget.resumeBlocking(afterResume)
         if (frameWanted.get()) scheduleFrameOnMainThread() else scheduleFrame()
-        Log.d(TAG, "渲染目标已恢复")
+        HiroLog.d(TAG) { "渲染目标已恢复" }
     }
 
     internal fun releaseRenderer() {
@@ -89,7 +89,7 @@ class HiroSkiaSurfaceView internal constructor(
         } finally {
             hostState = HiroSkiaHostState.Closed
         }
-        Log.d(TAG, "渲染目标已释放")
+        HiroLog.d(TAG) { "渲染目标已释放" }
     }
 
     override fun onDetachedFromWindow() {

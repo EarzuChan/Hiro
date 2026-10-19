@@ -4,7 +4,6 @@ package me.earzuchan.hiro.compose.internal.input
 
 import android.os.Bundle
 import android.text.TextUtils
-import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.BaseInputConnection
@@ -26,6 +25,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.getSelectedText
 import androidx.compose.ui.text.input.getTextAfterSelection
 import androidx.compose.ui.text.input.getTextBeforeSelection
+import me.earzuchan.hiro.log.HiroLog
 
 internal class HiroAndroidInputConnection(
     view: View,
@@ -89,7 +89,7 @@ internal class HiroAndroidInputConnection(
         if (text == null) {
             if (!loggedNullCommitText) {
                 loggedNullCommitText = true
-                Log.w(TAG, "IME 调用了 null commitText，已忽略，session=$sessionId，connection=$connectionId")
+                HiroLog.w(TAG) { "IME 调用了 null commitText，已忽略，session=$sessionId，connection=$connectionId" }
             }
             return true
         }
@@ -103,7 +103,7 @@ internal class HiroAndroidInputConnection(
         if (text == null) {
             if (!loggedNullComposingText) {
                 loggedNullComposingText = true
-                Log.w(TAG, "IME 调用了 null setComposingText，已忽略，session=$sessionId，connection=$connectionId")
+                HiroLog.w(TAG) { "IME 调用了 null setComposingText，已忽略，session=$sessionId，connection=$connectionId" }
             }
             return true
         }
@@ -206,7 +206,7 @@ internal class HiroAndroidInputConnection(
         val applied = try {
             predictionState.apply(commands)
         } catch (throwable: Throwable) {
-            Log.w(TAG, "IME 编辑命令无法应用，已忽略，session=$sessionId，connection=$connectionId", throwable)
+            HiroLog.w(TAG, throwable) { "IME 编辑命令无法应用，已忽略，session=$sessionId，connection=$connectionId" }
             return
         }
         val request = HiroImeEditRequest(sessionId, connectionId, applied.sequence, commands)

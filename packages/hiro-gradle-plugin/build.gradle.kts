@@ -1,5 +1,6 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
     id("me.earzuchan.hiro.internal.build-logic")
@@ -17,7 +18,15 @@ java {
     targetCompatibility = JavaVersion.VERSION_11
 }
 
-kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_11) } }
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
+
+        // 插件运行在 Gradle 内置的 Kotlin 标准库上，语言与 API 版本须与之对齐
+        languageVersion.set(KotlinVersion.KOTLIN_2_2)
+        apiVersion.set(KotlinVersion.KOTLIN_2_2)
+    }
+}
 
 dependencies { implementation(gradleApi()) }
 

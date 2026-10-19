@@ -3,11 +3,11 @@
 package androidx.compose.foundation.internal
 
 import android.content.ClipboardManager as AndroidClipboardManager
-import android.util.Log
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.HiroAnnotatedStringClipboardCodec
 import androidx.compose.ui.text.AnnotatedString
+import me.earzuchan.hiro.log.HiroLog
 
 internal suspend fun ClipEntry.readText(): String? =
     clipData.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
@@ -30,7 +30,7 @@ internal fun Clipboard.nativeClipboardHasText(): Boolean {
     return try {
         manager.hasPrimaryClip() && manager.primaryClipDescription?.hasMimeType("text/*") == true
     } catch (exception: SecurityException) {
-        Log.w("HiroClipboardUtils", "系统拒绝了剪贴板元数据读取", exception)
+        HiroLog.w("HiroClipboardUtils", exception) { "系统拒绝了剪贴板元数据读取" }
         false
     }
 }

@@ -1,9 +1,9 @@
 package me.earzuchan.hiro.skia
 
-import android.util.Log
 import android.view.ViewGroup
 import me.earzuchan.hiro.skia.util.checkHiroMainThread
 import org.jetbrains.skia.Canvas
+import me.earzuchan.hiro.log.HiroLog
 
 fun interface HiroSkiaRenderDelegate {
     fun onRender(canvas: Canvas, width: Int, height: Int, nanoTime: Long)
@@ -35,7 +35,7 @@ class HiroSkiaLayer(private val config: HiroSkiaLayerConfig = HiroSkiaLayerConfi
         this.container = container
         surfaceView = view
         needRender()
-        Log.d(TAG, "已挂载到宿主")
+        HiroLog.d(TAG) { "已挂载到宿主" }
         return view
     }
 
@@ -78,7 +78,7 @@ class HiroSkiaLayer(private val config: HiroSkiaLayerConfig = HiroSkiaLayerConfi
             }
         }
 
-        Log.d(TAG, "已从宿主脱离")
+        HiroLog.d(TAG) { "已从宿主脱离" }
     }
 
     override fun close() = detach()

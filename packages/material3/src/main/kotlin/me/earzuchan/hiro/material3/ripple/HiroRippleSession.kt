@@ -1,7 +1,6 @@
 package me.earzuchan.hiro.material3.ripple
 
 import android.os.SystemClock
-import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -20,6 +19,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
+import me.earzuchan.hiro.log.HiroLog
 
 internal class HiroRippleSession(private var rippleSize: Size, private var touch: Offset, private var targetRadius: Float) {
     private val finishSignal = CompletableDeferred<Unit>()
@@ -43,11 +43,11 @@ internal class HiroRippleSession(private var rippleSize: Size, private var touch
     }
 
     fun finish() {
-        if (finishSignal.complete(Unit)) Log.d(TAG, "将完成：$startedAtMillis")
+        if (finishSignal.complete(Unit)) HiroLog.v(TAG) { "将完成：$startedAtMillis" }
     }
 
     suspend fun play(invalidate: () -> Unit) = coroutineScope {
-        Log.d(TAG, "将开始：$startedAtMillis")
+        HiroLog.v(TAG) { "将开始：$startedAtMillis" }
 
         val kiraKiraJob = launch {
             while (isActive) {
@@ -69,7 +69,7 @@ internal class HiroRippleSession(private var rippleSize: Size, private var touch
         } finally {
             kiraKiraJob.cancel()
             joinAll(kiraKiraJob)
-            Log.d(TAG, "将结束：$startedAtMillis")
+            HiroLog.v(TAG) { "将结束：$startedAtMillis" }
         }
     }
 

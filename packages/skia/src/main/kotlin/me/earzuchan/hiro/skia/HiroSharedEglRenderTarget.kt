@@ -1,7 +1,6 @@
 package me.earzuchan.hiro.skia
 
 import android.opengl.GLES20
-import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import me.earzuchan.hiro.skia.util.checkHiroMainThread
@@ -16,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.microedition.khronos.egl.EGL10
 import javax.microedition.khronos.egl.EGL11
 import javax.microedition.khronos.egl.EGLSurface
+import me.earzuchan.hiro.log.HiroLog
 
 internal class HiroSharedEglRenderTarget(
     private val engine: HiroSharedEglEngine,
@@ -261,7 +261,7 @@ internal class HiroSharedEglRenderTarget(
         val nextEglSurface = engine.createWindowSurface(holder)
         if (nextEglSurface == null) {
             surfaceBad = true
-            Log.w(TAG, "创建 Hiro 窗口 EGLSurface 失败")
+            HiroLog.w(TAG) { "创建 Hiro 窗口 EGLSurface 失败" }
             return
         }
 
@@ -272,7 +272,7 @@ internal class HiroSharedEglRenderTarget(
         createSkiaSurface()
         layer.needRender()
         scheduleWork()
-        Log.d(TAG, "GPU 表面已改变：${width}x$height")
+        HiroLog.d(TAG) { "GPU 表面已改变：${width}x$height" }
     }
 
     private fun recreateSurfaceFromHolderOnRenderThread() {
@@ -372,7 +372,7 @@ internal class HiroSharedEglRenderTarget(
                 EGL10.EGL_SUCCESS -> Unit
                 EGL11.EGL_CONTEXT_LOST -> engine.handleContextLostOnRenderThread()
                 else -> {
-                    Log.w(TAG, "提交 Hiro EGLSurface 失败：0x${swapError.toString(16)}")
+                    HiroLog.w(TAG) { "提交 Hiro EGLSurface 失败：0x${swapError.toString(16)}" }
                     surfaceBad = true
                     destroySurfaceOnRenderThread(preserveDimensions = true)
                 }

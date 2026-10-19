@@ -106,3 +106,10 @@
 -keep,allowoptimization interface kotlin.jvm.functions.Function0 {
     java.lang.Object invoke();
 }
+
+# Hiro 日志：压缩构建中移除 Info 及以下等级的日志调用，只保留 Warn 与 Error
+-assumevalues class me.earzuchan.hiro.log.HiroLog {
+    boolean isVerboseLoggable() return false;
+    boolean isDebugLoggable() return false;
+    boolean isInfoLoggable() return false;
+}

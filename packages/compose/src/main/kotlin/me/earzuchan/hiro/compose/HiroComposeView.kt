@@ -3,7 +3,6 @@ package me.earzuchan.hiro.compose
 import android.content.Context
 import android.content.res.Configuration
 import android.util.AttributeSet
-import android.util.Log
 import android.graphics.Rect
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -16,6 +15,8 @@ import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.util.checkMainThreadForHiroCompose
 import me.earzuchan.hiro.compose.internal.util.name
 import me.earzuchan.hiro.compose.internal.util.shouldLogTouchEvent
+import me.earzuchan.hiro.log.HiroLog
+import me.earzuchan.hiro.log.HiroLogging
 
 class HiroComposeView private constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int, private val configuration: HiroComposeConfiguration, private val explicitSavedStateKey: String?) : FrameLayout(context, attrs, defStyleAttr), AutoCloseable {
     @JvmOverloads
@@ -52,7 +53,8 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         isFocusable = true
         isFocusableInTouchMode = true
         descendantFocusability = FOCUS_BLOCK_DESCENDANTS
-        Log.d(TAG, "被创建")
+        HiroLogging.attach(context)
+        HiroLog.d(TAG) { "被创建" }
     }
 
     fun setContent(content: @Composable () -> Unit) {
@@ -60,7 +62,7 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         check(!closed) { "HiroComposeView 已经永久关闭，不能再设置 Compose 内容" }
         this.content = content
         activeSession?.setContent(content)
-        Log.d(TAG, "已接收 Compose 内容")
+        HiroLog.d(TAG) { "已接收 Compose 内容" }
     }
 
     override fun onAttachedToWindow() {
@@ -87,13 +89,13 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
             throw throwable
         }
 
-        if (!closed) Log.d(TAG, "已挂载到窗口并创建宿主会话")
+        if (!closed) HiroLog.d(TAG) { "已挂载到窗口并创建宿主会话" }
     }
 
     override fun onDetachedFromWindow() {
         checkMainThreadForHiroCompose()
         disposeActiveSession()
-        Log.d(TAG, "已从窗口脱离并销毁宿主会话")
+        HiroLog.d(TAG) { "已从窗口脱离并销毁宿主会话" }
         super.onDetachedFromWindow()
     }
 
@@ -149,7 +151,7 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         if (event.actionMasked == MotionEvent.ACTION_DOWN) activeSession?.requestViewFocusFromPointer() ?: requestFocus()
 
         val handled = activeSession?.dispatchTouchEvent(event) == true
-        if (event.shouldLogTouchEvent()) Log.d(TAG, "触摸事件：${event.name()}，指针数：${event.pointerCount}，动作指针：${event.actionIndex}，已处理：$handled")
+        if (event.shouldLogTouchEvent()) HiroLog.v(TAG) { "触摸事件：${event.name()}，指针数：${event.pointerCount}，动作指针：${event.actionIndex}，已处理：$handled" }
         return handled || super.dispatchTouchEvent(event)
     }
 
@@ -167,7 +169,7 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         if (closed) return
         closed = true
         disposeActiveSession()
-        Log.d(TAG, "已永久关闭")
+        HiroLog.d(TAG) { "已永久关闭" }
     }
 
     private fun disposeActiveSession() {

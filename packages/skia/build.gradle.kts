@@ -28,9 +28,12 @@ android {
     publishing { singleVariant("release") { withSourcesJar() } }
 }
 
-tasks.withType<KotlinCompile>().configureEach { compilerOptions.moduleName.set("hiro-skia") }
+tasks.withType<KotlinCompile>().configureEach {
+    compilerOptions.moduleName.set("hiro-skia")
+    compilerOptions.optIn.add("me.earzuchan.hiro.log.HiroInternalApi")
+}
 
-dependencies { api("org.jetbrains.skiko:skiko-android:0.144.6") }
+dependencies { api("org.jetbrains.skiko:skiko-android:0.150.2") }
 
 publishing {
     publications {

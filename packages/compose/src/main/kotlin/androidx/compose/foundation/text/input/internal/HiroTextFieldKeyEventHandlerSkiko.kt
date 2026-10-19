@@ -3,6 +3,7 @@
 
 package androidx.compose.foundation.text.input.internal
 
+import android.view.InputDevice
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.text.KeyCommand
 import androidx.compose.foundation.text.KeyModifiers
@@ -50,3 +51,11 @@ internal fun createIOSTextFieldKeyEventHandler() = object : TextFieldKeyEventHan
 
 internal val KeyEvent.isFromSoftKeyboard: Boolean
     get() = ((internal.nativeEvent as? AndroidKeyEvent)?.flags ?: 0) and AndroidKeyEvent.FLAG_SOFT_KEYBOARD != 0
+
+// TIPS：与 AndroidX 安卓实现一致，来自非虚拟的字母键盘、且不带软键盘标志的按键才算硬件输入
+internal val KeyEvent.isFromHardwareSource: Boolean
+    get() {
+        val nativeEvent = internal.nativeEvent as? AndroidKeyEvent ?: return false
+        val device = nativeEvent.device ?: return false
+        return !device.isVirtual && device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC && nativeEvent.flags and AndroidKeyEvent.FLAG_SOFT_KEYBOARD == 0
+    }

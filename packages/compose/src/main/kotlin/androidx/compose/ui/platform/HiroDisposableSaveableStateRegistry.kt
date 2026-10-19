@@ -3,12 +3,12 @@
 
 package androidx.compose.ui.platform
 
-import android.util.Log
 import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.savedstate.SavedStateRegistryOwner
 import me.earzuchan.hiro.compose.internal.savable.HiroSavableStateBundleSeDes
 import me.earzuchan.hiro.compose.internal.savable.HiroSavableStateConfigurationOwner
 import me.earzuchan.hiro.compose.savable.HiroSavableStateConfiguration
+import me.earzuchan.hiro.log.HiroLog
 
 private const val TAG = "HiroDisposableSavableStateRegistry"
 
@@ -29,7 +29,7 @@ internal fun DisposableSaveableStateRegistry(id: String, savedStateRegistryOwner
         androidxRegistry.registerSavedStateProvider(key) { seDes.encodeRegistry(savableStateRegistry.performSave()) }
         true
     } catch (_: IllegalArgumentException) {
-        Log.d(TAG, "保存状态提供者注册冲突：$key。TODO：多个 Compose 容器使用相同可保存ID名时，我方应提供稳定且可诊断的实例隔离策略")
+        HiroLog.d(TAG) { "保存状态提供者注册冲突：$key。TODO：多个 Compose 容器使用相同可保存ID名时，我方应提供稳定且可诊断的实例隔离策略" }
         false
     }
 

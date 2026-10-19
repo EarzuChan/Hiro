@@ -60,8 +60,6 @@ class HiroTextInputCoordinatorTest {
 
         override fun requestHideKeyboard() = Unit
 
-        override fun requestViewFocus(): Boolean = true
-
         override fun startSession(
             sessionId: Long,
             revision: Long,

@@ -1,12 +1,12 @@
 package me.earzuchan.hiro.skia
 
-import android.util.Log
 import javax.microedition.khronos.egl.EGL10
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.egl.EGLContext
 import javax.microedition.khronos.egl.EGLDisplay
 import javax.microedition.khronos.egl.EGLSurface
 import javax.microedition.khronos.opengles.GL10
+import me.earzuchan.hiro.log.HiroLog
 
 internal class HiroEglHelper(private val layerConfig: HiroSkiaLayerConfig) {
     private var egl: EGL10? = null
@@ -58,16 +58,16 @@ internal class HiroEglHelper(private val layerConfig: HiroSkiaLayerConfig) {
         val nextSurface = try {
             currentEgl.eglCreateWindowSurface(currentDisplay, currentConfig, nativeWindow, null)
         } catch (exception: IllegalArgumentException) {
-            Log.e(TAG, "创建 Hiro EGLSurface 时窗口已经失效", exception)
+            HiroLog.e(TAG, exception) { "创建 Hiro EGLSurface 时窗口已经失效" }
             null
         }
 
         if (nextSurface == null || nextSurface == EGL10.EGL_NO_SURFACE) {
-            Log.w(TAG, "创建 Hiro EGLSurface 失败：${error(currentEgl)}")
+            HiroLog.w(TAG) { "创建 Hiro EGLSurface 失败：${error(currentEgl)}" }
             return null
         }
         if (!makeCurrent(nextSurface)) {
-            Log.w(TAG, "切换 Hiro EGLSurface 失败：${error(currentEgl)}")
+            HiroLog.w(TAG) { "切换 Hiro EGLSurface 失败：${error(currentEgl)}" }
             currentEgl.eglDestroySurface(currentDisplay, nextSurface)
             return null
         }
