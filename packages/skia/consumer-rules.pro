@@ -113,3 +113,19 @@
     boolean isDebugLoggable() return false;
     boolean isInfoLoggable() return false;
 }
+
+# 已从 Hiro Skia 中剔除的 Skiko 包装（本机库不含其 JNI），第三方库若有引用，运行到时才会报错，不阻断构建
+-dontwarn org.jetbrains.skia.skottie.**
+-dontwarn org.jetbrains.skia.sksg.**
+-dontwarn org.jetbrains.skia.Codec*
+-dontwarn org.jetbrains.skia.DynamicMemoryWStream*
+-dontwarn org.jetbrains.skia.Graphics*
+-dontwarn org.jetbrains.skia.OutputWStream*
+-dontwarn org.jetbrains.skia.PaintFilterCanvas*
+-dontwarn org.jetbrains.skia.PathUtils*
+-dontwarn org.jetbrains.skia.TextBlobBuilder*
+-dontwarn org.jetbrains.skia.shaper.**
+-dontwarn org.jetbrains.skia.svg.SVGCanvas*
+-dontwarn org.jetbrains.skiko.AngleApi
+-dontwarn org.jetbrains.skiko.AngleSupport_jvmKt
+-dontwarn org.jetbrains.skiko.NativeApplicationKt

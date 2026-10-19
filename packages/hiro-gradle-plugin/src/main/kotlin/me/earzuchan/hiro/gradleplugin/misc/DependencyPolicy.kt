@@ -1,6 +1,6 @@
 package me.earzuchan.hiro.gradleplugin.misc
 
-internal enum class HiroOwnedModuleKind(val description: String) { Compose("官方 Compose 模块"), ArchitectureComposeAdapter("官方 Lifecycle / SavedState Compose 适配模块"), JetBrainsRuntimeApi("JetBrains Runtime API") }
+internal enum class HiroOwnedModuleKind(val description: String) { Compose("官方 Compose 模块"), ArchitectureComposeAdapter("官方 Lifecycle / SavedState Compose 适配模块"), JetBrainsRuntimeApi("JetBrains Runtime API"), Skiko("Skiko 渲染库") }
 
 internal object HiroDependencyPolicy {
     private const val HIRO_GROUP = "me.earzuchan.hiro"
@@ -15,7 +15,6 @@ internal object HiroDependencyPolicy {
         "$JETBRAINS_GROUP.androidx.savedstate" to setOf("savedstate-compose")
 
         // CHECK：要不要BAN ANDROIDX.ACTIVITY.ACTIVITY-COMPOSE？我们已内建类似功能
-        // CHECK：要不要BAN `skiko-android-runtime-arm64/x64`，我们已塞入自己的Prebuilt
     )
 
     fun isComposeModule(group: String) = group == "$ANDROIDX_GROUP.compose" || group.startsWith("$ANDROIDX_GROUP.compose.") || group == "$JETBRAINS_GROUP.compose" || group.startsWith("$JETBRAINS_GROUP.compose.")
@@ -24,12 +23,17 @@ internal object HiroDependencyPolicy {
 
     private fun isJbrApi(group: String, name: String) = group == "$JETBRAINS_GROUP.runtime" && name == "jbr-api"
 
+    // Skiko 的类与本机库已随 Hiro Skia 提供，其他来源的 Skiko（含桌面版 skiko-awt）一律剥离
+    private fun isSkiko(group: String) = group == "$JETBRAINS_GROUP.skiko"
+
     fun hiroOwnedModuleKindOrNull(group: String, name: String): HiroOwnedModuleKind? = when {
         isComposeModule(group) -> HiroOwnedModuleKind.Compose
 
         isArchitectureComposeAdapter(group, name) -> HiroOwnedModuleKind.ArchitectureComposeAdapter
 
         isJbrApi(group, name) -> HiroOwnedModuleKind.JetBrainsRuntimeApi
+
+        isSkiko(group) -> HiroOwnedModuleKind.Skiko
 
         else -> null
     }

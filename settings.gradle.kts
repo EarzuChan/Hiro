@@ -14,7 +14,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        // 仅用于在构建期取得 Skiko 并处理进 Hiro Skia，用户侧无需此仓库
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev") { content { includeGroup("org.jetbrains.skiko") } }
     }
 }
 
