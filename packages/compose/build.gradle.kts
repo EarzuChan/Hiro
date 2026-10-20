@@ -185,6 +185,27 @@ val architectureComposeAdaptersJar = processToHiroJar("architecture-compose-adap
     )
 }
 
+val composeResourcesJar = processToHiroJar("compose-resources") {
+    // JetBrains Compose 资源运行库，第三方 KMP 包与用户的共享模块通过它读取 Res
+    artifact("org.jetbrains.compose.components:components-resources-desktop:1.12.2")
+
+    // 处理：读取器与系统环境由 Hiro 按安卓实现顶替
+
+    dropPathPrefix(
+        "org/jetbrains/compose/resources/ResourceReader_desktopKt",
+        "org/jetbrains/compose/resources/JvmResourceReader",
+        "org/jetbrains/compose/resources/ResourceEnvironment_desktopKt"
+    )
+
+    dropBinaryPattern("java/awt/", "javax/swing/")
+
+    // 校验
+
+    requireJarEntry("org/jetbrains/compose/resources/ResourceReader.class", "org/jetbrains/compose/resources/StringResourcesKt.class", "org/jetbrains/compose/resources/ImageResourcesKt.class")
+
+    forbidJarEntryFragment("java/awt/", "javax/swing/", "org/jetbrains/compose/resources/ResourceEnvironment_desktopKt", "org/jetbrains/compose/resources/ResourceReader_desktopKt")
+}
+
 android {
     namespace = "${HiroBuildConfig.namespace}.compose"
     compileSdk = HiroBuildConfig.androidCompileSdk
@@ -235,6 +256,7 @@ dependencies {
     // CMP 相关依赖，经处理进Jar。坐标和版本基本跟随上游 CMP 所使用的来
     api(composeJar.files)
     api(architectureComposeAdaptersJar.files)
+    api(composeResourcesJar.files)
 
     // 下面这些，不需要处理进Jar，一般不会导致冲突，Gradle一般能智能合并
     api("androidx.navigationevent:navigationevent:1.1.2", dependencyConfiguration = excludePwnedAndJvm)
@@ -263,4 +285,4 @@ publishing {
     }
 }
 
-tasks.named("check") { dependsOn(composeJar, architectureComposeAdaptersJar) }
+tasks.named("check") { dependsOn(composeJar, architectureComposeAdaptersJar, composeResourcesJar) }

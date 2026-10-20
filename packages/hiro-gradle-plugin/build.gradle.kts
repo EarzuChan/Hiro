@@ -28,7 +28,13 @@ kotlin {
     }
 }
 
-dependencies { implementation(gradleApi()) }
+dependencies {
+    implementation(gradleApi())
+
+    // 仅编译期依赖，运行时使用用户构建中已有的 AGP 与 Compose 插件；Compose 插件版本须与 Hiro 所跟随的 CMP 一致
+    compileOnly("com.android.tools.build:gradle-api:${libs.versions.agp.get()}")
+    compileOnly("org.jetbrains.compose:compose-gradle-plugin:1.12.2")
+}
 
 gradlePlugin {
     plugins {

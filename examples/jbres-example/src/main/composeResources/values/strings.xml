@@ -1,0 +1,15 @@
+<resources>
+    <string name="title">JetBrains Compose resources in Hiro</string>
+    <string name="greeting">Hello, %1$s!</string>
+    <string name="outside">Read outside composition: %1$s</string>
+    <plurals name="stars">
+        <item quantity="one">%1$d star</item>
+        <item quantity="other">%1$d stars</item>
+    </plurals>
+    <string-array name="seasons">
+        <item>Spring</item>
+        <item>Summer</item>
+        <item>Autumn</item>
+        <item>Winter</item>
+    </string-array>
+</resources>

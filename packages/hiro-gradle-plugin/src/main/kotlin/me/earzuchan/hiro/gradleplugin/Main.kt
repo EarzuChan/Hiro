@@ -4,6 +4,7 @@ import me.earzuchan.hiro.gradleplugin.misc.HiroAndroidPackaging
 import me.earzuchan.hiro.gradleplugin.misc.HiroAttributes
 import me.earzuchan.hiro.gradleplugin.processing.HiroDependenciesManageRule
 import me.earzuchan.hiro.gradleplugin.processing.HiroVariantKindDisambiguationRule
+import me.earzuchan.hiro.gradleplugin.resources.HiroComposeResources
 import me.earzuchan.hiro.gradleplugin.verdict.HiroFinalVerdict
 import org.gradle.api.Action
 import org.gradle.api.Plugin
@@ -26,6 +27,12 @@ class HiroGradlePlugin : Plugin<Project> {
         // 对不该进 APK 的 KMP 元数据/源码集结构信息进行排除，以防止 APK packaging 噪音、重复资源、无意义元数据混入
         project.pluginManager.withPlugin("com.android.application", Action { HiroAndroidPackaging.addMetadataExcludes(project) })
         project.pluginManager.withPlugin("com.android.library", Action { HiroAndroidPackaging.addMetadataExcludes(project) })
+
+        // 纯安卓模块应用了 Compose 插件时，由 Hiro 代为生成 Compose 资源的 Res 类
+        project.pluginManager.withPlugin("org.jetbrains.compose", Action {
+            project.pluginManager.withPlugin("com.android.application", Action { HiroComposeResources.configure(project) })
+            project.pluginManager.withPlugin("com.android.library", Action { HiroComposeResources.configure(project) })
+        })
 
         // 配置规矩以在多个Hiro变体中选最优（Hiro变体们是已在HiroDependenciesManageRule的处理中加入的）
         project.dependencies.attributesSchema.attribute(HiroAttributes.hiroVariantKind, Action { it.disambiguationRules.add(HiroVariantKindDisambiguationRule::class.java) })

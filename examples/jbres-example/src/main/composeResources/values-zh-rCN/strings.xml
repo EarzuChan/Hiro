@@ -1,0 +1,14 @@
+<resources>
+    <string name="title">Hiro 中的 JetBrains Compose 资源</string>
+    <string name="greeting">你好，%1$s！</string>
+    <string name="outside">组合之外读取：%1$s</string>
+    <plurals name="stars">
+        <item quantity="other">%1$d 颗星</item>
+    </plurals>
+    <string-array name="seasons">
+        <item>春</item>
+        <item>夏</item>
+        <item>秋</item>
+        <item>冬</item>
+    </string-array>
+</resources>

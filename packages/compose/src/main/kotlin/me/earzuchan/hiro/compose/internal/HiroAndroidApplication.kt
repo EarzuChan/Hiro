@@ -9,6 +9,8 @@ internal object HiroAndroidApplication {
 
     val context: Context get() = checkNotNull(applicationContext) { "Hiro 尚未取得安卓 Application Context，请先创建 HiroComposeView" }
 
+    val contextOrNull: Context? get() = applicationContext
+
     fun attach(context: Context) {
         if (applicationContext == null) applicationContext = context.applicationContext
     }

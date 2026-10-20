@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Hiro JB Res</string>
+    <style name="HiroJbResExampleTheme" parent="android:Theme.Material.NoActionBar"/>
+</resources>
