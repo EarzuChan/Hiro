@@ -23,15 +23,9 @@ import me.earzuchan.hiro.log.HiroLog
 internal object HiroAnnotatedStringClipboardCodec {
     fun encode(value: AnnotatedString): CharSequence {
         if (value.spanStyles.isEmpty()) return value.text
+
         return SpannableString(value.text).apply {
-            value.spanStyles.forEach { range ->
-                setSpan(
-                    Annotation(SPAN_STYLE_KEY, encodeStyle(range.item)),
-                    range.start,
-                    range.end,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-                )
-            }
+            value.spanStyles.forEach { range -> setSpan(Annotation(SPAN_STYLE_KEY, encodeStyle(range.item)), range.start, range.end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,) }
         }
     }
 

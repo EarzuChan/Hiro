@@ -90,22 +90,29 @@ import me.earzuchan.hiro.log.HiroLogging
 HiroLogging.level = HiroLogLevel.Verbose // per-event logs such as touches and ripples
 ```
 
-## Technical Notes
+## Special Notes
 
-- The internal upstream dependencies of Compose and Skiko in this project are planned to be updated alongside major stable releases of Compose Multiplatform (CMP). Additionally, when using Hiro Compose or Hiro Material 3, you should not import official (original) Compose dependencies (either AndroidX or CMP). This ensures that all Compose content is resolved based on the Hiro-specific classpath (Hiro's exclusive Android Compose Skiko). The Hiro Gradle Plugin (HGP) also helps prevent you and your dependencies from introducing original Compose artifacts.
-- For the time being, Skia is integrated only with OpenGL, and Vulkan is not included. This decision was made considering APK size, device compatibility, and implementation complexity.
-- The ripple effect has been recreated based on the underlying principles of the AOSP Material 3 ripple animation, using the Skia graphics stack. This ensures a consistent Material 3 ripple experience even on older Android versions or custom ROMs. This recreation is included in Hiro Material 3 and may eventually be contributed back upstream to CMP.
-- The `JNI Critical Section Violation: using JNI after critical get` issue in JetBrains Skiko's native code has been fixed, and Hiro Skia ships native libraries (x64 and Arm64) built with the fix and trimmed to what Compose needs. The [fix](https://github.com/JetBrains/skiko/pull/1235) has been merged into Skiko, so Hiro will stop patching it once it ships upstream; the `BreakIterator` array type issue has been fixed upstream.
-- Hiro Skia is designed primarily to support Hiro Compose. Rather than relying on the official JetBrains Android codes—which contain known bugs (such as passing `width, width` to `Rect.makeWH`)—this project implements a lightweight custom Skia Layer and SurfaceView. While this implementation is functional for Hiro Compose, standalone Skia rendering use cases have not been extensively tested.
-- In Hiro Compose, Compose and Skia/GL run on an independent thread, communicating with the Android main thread via state machine models. The `ViewModelStore` within Hiro Compose is isolated from the Android host (e.g., Activity) by design for performance reasons. Hiro Compose adapts essential Android inputs (clicks, navigation integration, etc.), Lifecycle, and SavedState. It also includes out-of-the-box support for `Kotlinx Serialization @Serializable` in SavedState, alongside optional support for custom-typed serializer/deserializer (SeDes) SavedState implementations. For more details on Hiro Compose, please refer to the [Architecture Documentation (Chinese only)](docs/hiro-compose-arch.md).
+- The internal upstream dependencies of Compose and Skiko in this project are updated alongside the major stable versions of Compose Multiplatform (CMP). When using Hiro Compose or Hiro Material 3, you do not need to introduce official (original) Compose dependencies (whether AndroidX or CMP), which ensures that all Compose content is resolved based on my specific classpath (Hiro's exclusive Android Compose Skiko). My Hiro Gradle Plugin (HGP) will also help prevent you and your dependencies from introducing original Compose additionally.
+- The Compose and Skia/GL of Hiro Compose run on an independent rendering thread, communicating with the Android main thread through a state machine model. It completes basic Android event inputs (clicks, navigation integration, etc.), Lifecycle, and SavedState adaptations (and provides out-of-the-box support for `Kotlinx Serialization @Serializable` in SavedState as a bonus, as well as user-optional (requiring the user to implement an interface) custom type SeDes (serialization and deserialization) SavedState support). For more about Hiro Compose, it is recommended to check the [Architecture Documentation](docs/hiro-compose-arch.md).
+- Hiro Skia is basically built for Hiro Compose. Instead of directly relying on JetBrains' official Android code which has known bugs (such as passing `width, width` as parameters to `Rect.makeWH`), I implemented a lightweight set of Skia Layer and SurfaceView, which is basically sufficient for the display of Hiro Compose.
+- Based on the underlying principles of the AOSP Material 3 ripple animation, I recreated the effect using the Skia graphics stack. This enables a consistent Material 3 ripple experience even on lower-version Android and heavily modified ROMs. This recreation is included in Hiro Material 3, and I might contribute it separately to upstream CMP later.
+- I fixed the `JNI Critical Section Violation: using JNI after critical get` issue present in JetBrains Skiko's native code, and Hiro Skia contains the fixed native library. The [PR](https://github.com/JetBrains/skiko/pull/1235) for this fix has been merged by Skiko, and Hiro will no longer need to patch it itself once it is released with an upstream version; in addition, the array type issue of BreakIterator has already been fixed by upstream itself.
 
 ## Known Limitations
 
-- Accessibility (TalkBack and other screen readers) and drag and drop are not wired up yet.
-- Native libraries cover arm64-v8a and x86_64 only, and the graphics backend is OpenGL ES only.
-- `painterResource` does not support selector, layer-list or other XML drawables yet; XML font families (including downloadable fonts) are not supported.
-- Hiro Skia's native libraries are trimmed to what Compose needs: wrappers such as Codec, Skottie and TextBlobBuilder are removed, and types such as TextBlob, TextLine, Pixmap, Drawable, Blender and Shaper remain but throw `UnsatisfiedLinkError` when called.
-- Compose runs on Hiro's render thread, so use `LocalContext` and friends for thread-safe work such as reading resources; switch to the main thread yourself for things like `Toast`.
+- **Multi-threading and Component Isolation**:
+    - Since Compose runs on Hiro's independent rendering thread, `LocalContext` and the like should only be used for thread-safe operations such as reading resources; **for operations that require the main thread (such as `Toast`), please switch back to the main thread yourself**.
+    - The `ViewModelStore` in the Hiro Compose world does not interoperate with the one in the Android world (such as Activity) (this is a deliberate design choice for performance considerations).
+- **Native Library Architectures and Graphics Backends**:
+    - The native libraries only include `arm64-v8a` (Arm64) and `x86_64` (x64). On x86 emulators that rely on ARM translation, such as LDPlayer, it may crash because the translation layer fails to load the Skiko native library (the same applies to the official library); for those, please use `x86_64`.
+    - Out of considerations for package size, device compatibility, and implementation logic complexity, the Skia graphics backend currently only interfaces with OpenGL ES and does not introduce Vulkan (supporting Vulkan is quite troublesome and is left for future consideration).
+- **Skia Trimming and Standalone Usage Limitations**:
+    - The native library of Hiro Skia is built with trimming according to what Compose requires—wrappers such as `Codec`, `Skottie`, and `TextBlobBuilder` have been removed; although types such as `TextBlob`, `TextLine`, `Pixmap`, `Drawable`, `Blender`, and `Shaper` are still retained, calling them will throw `UnsatisfiedLinkError`.
+    - Using Hiro Skia for standalone Skia hosting purposes outside of Hiro Compose has not been deeply tested.
+- **Currently Unsupported System Features and Resources**:
+    - Accessibility (screen readers like TalkBack cannot read Hiro content) and drag-and-drop are not yet integrated.
+    - `painterResource` currently does not support other XML Drawables such as `selector` and `layer-list`.
+    - XML font families (including downloadable fonts) are currently not supported.
 
 ## Known Issues & Progress
 
@@ -117,7 +124,7 @@ Please refer to my [Todo List (Chinese only)](docs/todo.md).
 
 ### About this project
 
-- Open-sourced under the [MIT License](LICENSE). If this project helps you, please consider giving it a star. Third-party works included or adapted, along with acknowledgements, are listed in the [Third-Party Notices (Chinese only)](THIRD_PARTY_NOTICES.md).
-- Developed with the assistance of artificial intelligence tools such as OpenAI Codex.
-- This project is experimental. No guarantees are made regarding production readiness; please evaluate and use it in production environments at your own risk.
-- Active optimization is ongoing to provide a usable and functional experience.
+- Open-sourced under the [MIT](LICENSE) license. If it is helpful to you, please give it a Star. For included and modified third-party works and acknowledgments, see [Third-Party Notices (Chinese only)](THIRD_PARTY_NOTICES.md).
+- Assisted by artificial intelligence such as OpenAI GPT and Anthropic Claude during the development process.
+- Is experimental in nature. I make no guarantees of complete usability in production environments. Please evaluate for yourself whether to adopt it in a production environment, and you must bear the risks of use yourself.
+- Is still under continuous optimization, in an effort to do my best to provide you with a "functional and usable" experience.

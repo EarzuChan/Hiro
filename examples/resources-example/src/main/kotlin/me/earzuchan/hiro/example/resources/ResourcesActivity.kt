@@ -102,7 +102,7 @@ private fun ResourcesShowcase() {
         Section("基础值")
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(32.dp).background(colorResource(R.color.accent)))
-            Text("dimen=$padding，integer=${integerResource(R.integer.answer)}，bool=${booleanResource(R.bool.is_hiro)}，primes=${integerArrayResource(R.array.primes).joinToString()}")
+            Text("dimen=$padding，integer=${integerResource(R.integer.answer)}，bool=${booleanResource(R.bool.is_hiro)}，primes=${integerArrayResource(R.array.primes).joinToString()}") // 哇还有宇宙终极答案
         }
 
         Section("矢量（渐变填充）与位图")
