@@ -1,9 +1,9 @@
 # 待办
 
-- [ ] 内建各组件的关键点Log，以及基于Debug/Release的启用性门控
-- [ ] Compose：ViewModel、LifeCycle、SavedState的支持基本完成，接下来是R和Res
+- [X] 内建各组件的关键点Log，以及基于Debug/Release的启用性门控：HiroLog，Release 只留警告与错误，R8 剥离其余
+- [X] Compose：ViewModel、LifeCycle、SavedState的支持基本完成，接下来是R和Res：R、Assets、JB Res 均已支持，纯安卓模块由 HGP 代为生成 Res
 - [-] BuildLogic优化：是否需要再简化代码？黑曼巴
-- [-] Skiko 可以变成 Processed Jar，且这同CMP都可以再屏蔽些类
+- [X] Skiko 可以变成 Processed Jar，且这同CMP都可以再屏蔽些类：已打进 Hiro Skia，并剔除本机库已裁的包装
 - [ ] 斜窗正家具：View的Transform，而里面HiroCompose渲染画面仍是正的。是否要同步，或者是可配置，有待讨论
 - [-] 重建活动，Activity VM 实例能做到不变，而 Hiro VM 实例改变。这虽是预期行为，但有没有要改的
 - [-] Input手感调优：AI说可接ViewCfg里的参数，有必要吗
@@ -14,3 +14,8 @@
 - [-] Sysbar适配：基本完成。Sysbar的颜色问题？（这是AndroidX的锅还是我的）。Insets 未来可看是否做 ViewPort Relative NEW API？再说
 - [X] 测试液态玻璃和Miuix：已跑通
 - [X] 切换系统颜色导致Compose重置（可能是Activity重开）。但其实有办法让Activity不重开，想办法解决一下：这个是具体App的Change问题，改清单耳
+- [ ] 无障碍：TalkBack 读不到 Hiro 内容，需把语义树接到 AccessibilityNodeProvider
+- [ ] 拖放：DragAndDropNode 依赖的桌面实现已剥离，安卓端尚未接入
+- [ ] Drawable：selector、layer-list 等 XML Drawable 未支持，可考虑按需原生实现或软件兜底；XML 字体族未支持
+- [ ] Lazy 预取：1.12 起 PlatformContext 提供 prefetchScheduler，尚未接入
+- [ ] 实机验证：本轮只在 API 36 的 x86_64 模拟器上验证，arm64 真机与 API 28 设备待测

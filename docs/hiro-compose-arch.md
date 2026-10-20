@@ -21,7 +21,7 @@ Hiro Compose
 
 ## 固定底板
 
-Hiro 目前以 CMP 1.11.1 的 Desktop 变体作为固定底板。Desktop 本就是 Skiko Compose 的一具体平台实现，并且与 Android 同属类 JVM 体系，适合作为移植基线。
+Hiro 目前以 CMP 1.12.2 的 Desktop 变体作为固定底板。Desktop 本就是 Skiko Compose 的一具体平台实现，并且与 Android 同属类 JVM 体系，适合作为移植基线。
 
 Hiro 不直接维护一份 Compose Multiplatform 源码自行老改，原因是上游代码和 Hiro 介入点会混在一起，难以审计真实修补面、形成成熟的修补方案，且难以升级上游：升级时需要重新拉取上游源码并重新大量修改源码
 
@@ -47,9 +47,13 @@ Hiro 将官方二进制工件作为输入，通过声明式处理为 Processed J
 - Android 不兼容的 Compose 平台实现
 - Lifecycle Compose 的线程绑定实现
 - `collectAsStateWithLifecycle` 的调度实现
-- `LocalViewModelStoreOwner` 的 Android ViewTree 回退
 - Navigation3 的 ViewModel 装饰器
 - Savable（注：官方拼写成 Sav**e**able，而我采取当前拼写）序列化入口
+- 字体加载器：使安卓 `Font(R.font.xxx)` 能经 Skia 加载
+- Material3 的平台水波纹入口：接入 Hiro 着色器水波纹
+- JetBrains Compose 资源的读取器与系统环境：先读 assets 再读类加载器，环境取自安卓 Configuration
+
+另有一类「门面转发」：Skiko 版 UI 按桌面版 Lifecycle、NavigationEvent 的门面类取 `HostDefaultKey`，而 Hiro 使用的是它们的安卓版工件，Hiro 便以桌面门面类名转发到安卓版的同一个键，使二者判等。
 
 顶替不是运行时 Hook，也不是依赖解析的偶然性覆盖，而是确定的、稳定的。原类在 Jar Processing 中精准剥离，再由 Hiro 提供**船新**实现。
 
@@ -61,6 +65,7 @@ Hiro 将官方二进制工件作为输入，通过声明式处理为 Processed J
 - View 尺寸、Density、Insets、安卓主题模式、触摸输入与IME等等 -> `PlatformContext` 状态
 - Activity Lifecycle -> Hiro Lifecycle
 - Android BackDispatcher 与 Hiro Navigation 的双向握手
+- Android Context、Configuration、Resources -> `LocalContext`、`LocalConfiguration`、`LocalResources`
 - Android Bundle 与 Hiro SavedState 的快照运输
 - Choreographer 帧信号驱动 Skia 按需绘制
 
@@ -75,6 +80,8 @@ Hiro 独立提供：
 - Compose、Skia、GL 同线程的直通渲染管线
 - Hiro Architecture Components Owner
 - 输入合流、IME、窗口信息、Insets、Back 等 Android 适配
+- 安卓 R 与 Assets 资源接口：字符串、颜色、尺寸、矢量（含渐变）、位图、九宫格、Shape、动画矢量与字体
+- 日志门控 `HiroLog`：Release 只输出警告与错误，R8 剥离其余调用
 - 添头：Savable 自动 Kotlinx Serialization 编解码、可客制化的 HiroSavableStateCodec
 
 ## 构建期纯洁性
@@ -84,6 +91,8 @@ Hiro 独立提供：
 Hiro 自身模块 → 直接放行
 官方 Compose 模块 → 阻断
 官方 Lifecycle/SavedState 适配层 → 阻断
+Skiko（含桌面版 skiko-awt）→ 阻断，由 Hiro Skia 提供
+纯安卓模块应用 Compose 插件 → 代为生成 JetBrains Compose 资源的 Res
 第三方 KMP Compose 库 → 选择 Skiko/Desktop 变体
 最终 classpath → 做所有权与类泄漏校验
 
@@ -355,8 +364,9 @@ sequenceDiagram
     Choreographer->>Main: doFrame(nanoTime)
     Main->>Render: HiroSharedEglRenderTarget.requestRender
     Render->>Render: 消费帧时间与本轮命令快照
-    Render->>Compose: Snapshot Apply、重组、Measure、Layout
-    Render->>GPU: ComposeScene.render 当前 Canvas
+    Render->>Compose: FrameRecomposer.performFrame：Snapshot Apply、重组与帧动画
+    Render->>Compose: ComposeScene.measureAndLayout
+    Render->>GPU: ComposeScene.draw 当前 Canvas
     Render->>GPU: flushAndSubmit
 ```
 
@@ -367,6 +377,8 @@ ComposeScene -> 当前 GPU Surface 的 Skia Canvas -> flushAndSubmit
 ```
 
 不存在 Compose 线程生成 SkPicture、GL 线程再回放的中间层。Composition、绘制指令生成、Skia Canvas 调用和 GPU 提交都发生在同一渲染线程。
+
+每个 Hiro 场景持有自己的 `FrameRecomposer`，它以该场景的渲染调度器为宿主，并向 `GlobalSnapshotManager` 登记，使全局快照写入在渲染线程上合并派发。渲染本帧时引起的场景失效由帧末统一检查，仍有失效或动画等待时才请求下一帧。
 
 ## 命令邮箱与输入状态机
 
@@ -492,3 +504,5 @@ flowchart LR
 - [HiroAndroidHostBridge](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/architecture/HiroAndroidHostBridge.kt)：Android Lifecycle、Back 与 SavedState 宿主桥
 - [HiroSavedStateTransport](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/architecture/HiroSavedStateTransport.kt)：两行政区间的 Bundle 副本运输
 - [HiroSkiaLayer 与 SurfaceView](../packages/skia/src/main/kotlin/me/earzuchan/hiro/skia)：EGL、Skia Surface、GPU 资源与帧调度
+- [资源实现](../packages/compose/src/main/kotlin/me/earzuchan/hiro/compose/internal/res)：矢量与动画矢量解析、九宫格、Shape 与字体加载
+- [Compose 资源生成](../packages/hiro-gradle-plugin/src/main/kotlin/me/earzuchan/hiro/gradleplugin/resources)：纯安卓模块的 Res 生成与资源打包

@@ -19,30 +19,27 @@
 
 ## 提示（or 弊端）
 
-1. 由于这走的是自提供的 Skia，打包相应的 `.so`（动态共享库）与相关资源不可避，这将在 `向安装包打入 x86_84、arm64-v8a 双架构本机库以及相关资源` 的情况下导致您的安装包增大 6MB 左右，我已竭尽全力减小裁剪以缩减体积。
-2. 目前接入体系尚不 100% 完善，在一些极冷门的使用场景可能有 Bug/Todo，且性能未必全场景最优。
+1. 由于这走的是自提供的 Skia，打包相应的 `.so`（动态共享库）与相关资源不可避，这将在 `向安装包打入 x86_64、arm64-v8a 双架构本机库以及相关资源` 的情况下导致您的安装包增大 6MB 左右，我已竭尽全力减小裁剪以缩减体积。
+2. 目前接入体系尚不 100% 完善，在一些极冷门的使用场景可能有 Bug/Todo，且性能未必全场景最优，详见下文[已知限制](#已知限制)。
 
 ## 提供的玩意
 
 - **Hiro Skia**：对 Skia（Skiko）的打包，在安卓上提供 `SkiaLayer` 和 `SkiaSurfaceView`。这也是 Hiro Compose 的根基。
 - **Hiro Compose**：基于 Compose Multiplatform 的 UI/Runtime/Foundation 等的 SkikoDesktop 版本以及相关组件作为底版制作，并深度修补，尽力补齐在安卓上的体验（接入各种事件，并提供 HiroComposeView等）。
 - **Hiro Material 3**：对 Compose Multiplatform 的 Material 3 的 Skia（Skiko）/Desktop（即 Jvm）的打包与体验补齐。
-- **Hiro Gradle Plugin**：帮助用户实现无感对第三方 Compose 包的 Skia（Skiko）/Desktop 模块转用（ Android 转用 Skia（Skiko）/Desktop，并阻断对 AndroidX Compose / Compose Multiplatform 的 Android 的依赖引入）。
+- **Hiro Gradle Plugin**：帮助用户实现无感对第三方 Compose 包的 Skia（Skiko）/Desktop 模块转用（ Android 转用 Skia（Skiko）/Desktop，并阻断对 AndroidX Compose / Compose Multiplatform 的 Android 的依赖引入），还能在纯安卓模块中代为生成 JetBrains Compose 资源（`Res`）。
 - **Examples，几个使用例**：不但是我们开发测试时的参考面，也可以让您深度体验和了解 Hiro 各方面能力。
 - **[Whole App Example](https://github.com/EarzuChan/HiroWholeAppExample)**：一个简单但架构完整的 App，用以展示 Hiro 在开发可用 App 上的可行性。
 
 ## 用起来（Getting Started）
 
-1. 创建一个标准的 Android 项目。
+1. 创建一个标准的 Android 项目（AGP 9、Kotlin 2.2 及以上，minSdk 28）。
 2. 配置 Maven 仓库：在项目根目录的 **`settings.gradle.kts`** 文件中进行以下配置：
    在 `pluginManagement` 和 `dependencyResolutionManagement` 的 `repositories` 块中均添加我的仓库：
    ```kotlin
    maven("https://earzuchan.github.io/Maven/") // 注意：请确保“Maven”中的字母“M”为大写
    ```
-   在 `dependencyResolutionManagement` 的 `repositories` 块中再添加 JetBrains Compose Dev 的仓库：
-   ```kotlin
-   maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-   ```
+   Skiko 已随 Hiro Skia 一同发布，无需再添加 JetBrains Compose Dev 仓库。
 3. 应用 Gradle 插件：在根目录 `build.gradle.kts` 文件的 `plugins` 块中添加：
    ```kotlin
    id("me.earzuchan.hiro") version "<VERSION>" apply false
@@ -70,14 +67,45 @@
    }
    ```
 
+## 资源
+
+- **安卓资源（R 与 Assets）**：提供与 AndroidX 同名的接口，如 `stringResource`、`pluralStringResource`、`colorResource`、`dimensionResource`、`painterResource`、`ImageVector.vectorResource`、`ImageBitmap.imageResource`，以及 `LocalContext`、`LocalConfiguration`、`LocalResources`；语言、深色模式等配置变化时自动重组。
+  - `painterResource` 支持矢量图（含渐变）、位图、九宫格（.9.png）与形状（shape）；动画矢量请用 `AnimatedImageVector.animatedVectorResource` 搭配 `rememberAnimatedVectorPainter`。
+  - 字体支持 `Font(R.font.xxx)` 与 `Font("fonts/xxx.ttf", assets)`。
+- **JetBrains Compose 资源（Res）**：KMP 共享模块与第三方库中的资源照常可用。纯安卓模块若也想用，应用与 Hiro 所跟随版本一致的 Compose 插件，并把资源放进 `src/main/composeResources`，Hiro Gradle 插件会代为生成 `Res`（默认包名为 `<group>.<模块名>.generated.resources`）：
+  ```kotlin
+  plugins {
+      id("org.jetbrains.compose") version "1.12.2"
+  }
+  ```
+
+## 日志
+
+Hiro 的日志在不可调试的 App（Release）中只输出警告与错误，且经 R8 压缩后连同字符串一并移除；可调试的 App 默认输出调试级别，可按需调整：
+
+```kotlin
+import me.earzuchan.hiro.log.HiroLogLevel
+import me.earzuchan.hiro.log.HiroLogging
+
+HiroLogging.level = HiroLogLevel.Verbose // 查看触摸、波纹等逐事件日志
+```
+
 ## 说明
 
 - 本项目的 Compose 和 Skiko 内部上游依赖会随 Compose Multiplatform（CMP）的主要稳定版本一同更新。此外，当使用 Hiro Compose 或 Hiro Material 3 时，您无需引入官方（原始）的Compose 依赖项（无论是 AndroidX 还是 CMP）。这能确保所有 Compose 内容都基于我特定的类路径（Hiro 独家的 Android Compose Skiko）进行解析。我的 Hiro Gradle 插件（HGP）也会帮您使您和您的依赖不额外引入原版 Compose。
 - Skia 我暂只对接 OpenGL 而不引入 Vulkan，这是出于包体积、设备兼容性与实现逻辑复杂度的考量。
 - 我根据 AOSP Material 3 水波纹动画的底层原理，使用 Skia 图形栈复刻了该效果。这使得在低版本 Android、魔改 ROM 上也能有一致的 Material 3 水波纹体验。这个复刻已内含在 Hiro Material 3 中，我或许之后会另外贡献给上游CMP。
-- 我修复了 JetBrains Skiko 原生代码中存在的 `JNI Critical Section Violation: using JNI after critical get` 问题，以及 BreakIterator 的 JVM 数组类型错误。Hiro Skia 也已含有我修复后构建的本机库（x64 和 Arm64）。关于头一个 Bug，我已向 Skiko 贡献[修复PR](https://github.com/JetBrains/skiko/pull/1235)，而后者，我将在后续评估是否作此贡献。
+- 我修复了 JetBrains Skiko 原生代码中存在的 `JNI Critical Section Violation: using JNI after critical get` 问题，Hiro Skia 含有修复后、并按 Compose 所需裁剪构建的本机库（x64 和 Arm64）。该修复的 [PR](https://github.com/JetBrains/skiko/pull/1235) 已被 Skiko 合并，待其随上游版本发布后 Hiro 将不再需要自行修补；BreakIterator 的数组类型问题上游已自行修复。
 - Hiro Skia 基本上是为 Hiro Compose 打造的。我没有直接依赖存在已知 Bug（比如把 `Rect.makeWH` 的参数传成了 `width, width`）的 JetBrains 官方安卓代码，而是实现了一套轻量级的 Skia 的 Layer 和 SurfaceView，对于 Hiro Compose 的显示是基本够用，而独立的 Skia 承载用途，则未经深度测试。
 - Hiro Compose 的 Compose 和 Skia/GL 跑在独立线程，通过状态机模型与安卓主线程往来；Hiro Compose 世界中的 ViewModelStore 与 安卓世界中的（如 Activity）不互通，这是设计，为了性能考量。Hiro Compose 补齐了基本的安卓事件输入（点击、导航对接等）、Lifecycle 和 SavedState 适配（并提供了作为添头的 `Kotlinx Serialization @Serializable` 在 SavedState 中的开箱即用支持，以及用户可选（需要用户实现接口）提供的自定义类型 SeDes（序列化反序列化）SavedState支持）。关于 Hiro Compose 的更多，建议查看[架构说明](docs/hiro-compose-arch.md)。
+
+## 已知限制
+
+- 尚未接入无障碍（TalkBack 等读屏读不到 Hiro 内容）与拖放。
+- 本机库仅含 arm64-v8a 与 x86_64，图形后端仅 OpenGL ES。
+- `painterResource` 暂不支持 selector、layer-list 等其他 XML Drawable；XML 字体族（含可下载字体）暂不支持。
+- Hiro Skia 的本机库按 Compose 所需裁剪：Codec、Skottie、TextBlobBuilder 等包装已移除；TextBlob、TextLine、Pixmap、Drawable、Blender、Shaper 等虽仍保留类型，但调用会抛出 `UnsatisfiedLinkError`。
+- Compose 运行在 Hiro 渲染线程，`LocalContext` 等只宜用于读取资源等线程安全的操作；需要主线程的操作（如 `Toast`）请自行切回主线程。
 
 ## 已知问题、工程进展
 
@@ -89,7 +117,7 @@
 
 ### 本项目
 
-- 基于 MIT 协议开源，若对您有帮助，请 Star。
+- 基于 [MIT](LICENSE) 协议开源，若对您有帮助，请 Star。所含与改写的第三方作品及致谢见[第三方声明](THIRD_PARTY_NOTICES.md)。
 - 在开发过程中使用了 OpenAI Codex 等人工智能辅助。
 - 是实验性质的，我不作任何生产环境完全可用性保证，请您自行评估是否取用于生产环境，使用风险需自行承担。
 - 仍在持续优化中，为尽力给您提供“能用、可用”的体验。
