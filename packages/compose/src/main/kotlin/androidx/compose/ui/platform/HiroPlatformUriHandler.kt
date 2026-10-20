@@ -2,14 +2,24 @@
 
 package androidx.compose.ui.platform
 
-import me.earzuchan.hiro.log.HiroLog
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import me.earzuchan.hiro.compose.internal.HiroAndroidApplication
+import me.earzuchan.hiro.compose.internal.HiroRenderDispatcherRegistry
 
+// TIPS：与 AndroidX AndroidUriHandler 一致，以 ACTION_VIEW 打开；优先用当前场景所在 View 的 Context，使新页面留在宿主任务栈中
 private object HiroUriHandler : UriHandler {
-    private const val TAG = "HiroPlatformUriHandler"
-
     override fun openUri(uri: String) {
-        // TODO
-        HiroLog.d(TAG) { "打开链接被调用，但暂未接入安卓意图：$uri" }
+        val context = HiroRenderDispatcherRegistry.currentAndroidPlatformServices()?.view?.context ?: HiroAndroidApplication.context
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri)).apply { if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+
+        try {
+            context.startActivity(intent)
+        } catch (exception: ActivityNotFoundException) {
+            throw IllegalArgumentException("无法打开链接：$uri", exception)
+        }
     }
 }
 

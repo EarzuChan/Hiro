@@ -1,5 +1,9 @@
 package me.earzuchan.hiro.compose.internal
 
+import androidx.core.view.ViewCompat
+import androidx.core.view.HapticFeedbackConstantsCompat
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import android.content.Context
 import android.graphics.Rect as AndroidRect
 import android.view.ActionMode
@@ -18,6 +22,8 @@ import me.earzuchan.hiro.log.HiroLog
 // CHECK：这个还有别的用武之地吗，除了一个小小的Toolbar
 internal class HiroAndroidPlatformServices(val view: View) {
     val applicationContext: Context = view.context.applicationContext
+
+    fun createHapticFeedback(): HapticFeedback = HiroAndroidHapticFeedback(view)
 
     fun createTextToolbar(): TextToolbar {
         val dispatcher = checkNotNull(HiroRenderDispatcherRegistry.currentRegisteredDispatcher()) { "Hiro 文本工具栏只能在已注册的渲染场景中创建" }
@@ -198,5 +204,29 @@ private class HiroAndroidTextToolbar(private val view: View, private val dispatc
     companion object {
         private const val TAG = "HiroTextToolbar"
         private const val TOOLBAR_RESTORE_DELAY_MILLIS = 150L
+    }
+}
+
+// TIPS：类型映射与 AndroidX PlatformHapticFeedback 一致；反馈由 View 发起，故投递到主线程执行
+private class HiroAndroidHapticFeedback(private val view: View) : HapticFeedback {
+    override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+        val constant = when (hapticFeedbackType) {
+            HapticFeedbackType.Confirm -> HapticFeedbackConstantsCompat.CONFIRM
+            HapticFeedbackType.ContextClick -> HapticFeedbackConstantsCompat.CONTEXT_CLICK
+            HapticFeedbackType.GestureEnd -> HapticFeedbackConstantsCompat.GESTURE_END
+            HapticFeedbackType.GestureThresholdActivate -> HapticFeedbackConstantsCompat.GESTURE_THRESHOLD_ACTIVATE
+            HapticFeedbackType.KeyboardTap -> HapticFeedbackConstantsCompat.KEYBOARD_TAP
+            HapticFeedbackType.LongPress -> HapticFeedbackConstantsCompat.LONG_PRESS
+            HapticFeedbackType.Reject -> HapticFeedbackConstantsCompat.REJECT
+            HapticFeedbackType.SegmentFrequentTick -> HapticFeedbackConstantsCompat.SEGMENT_FREQUENT_TICK
+            HapticFeedbackType.SegmentTick -> HapticFeedbackConstantsCompat.SEGMENT_TICK
+            HapticFeedbackType.TextHandleMove -> HapticFeedbackConstantsCompat.TEXT_HANDLE_MOVE
+            HapticFeedbackType.ToggleOff -> HapticFeedbackConstantsCompat.TOGGLE_OFF
+            HapticFeedbackType.ToggleOn -> HapticFeedbackConstantsCompat.TOGGLE_ON
+            HapticFeedbackType.VirtualKey -> HapticFeedbackConstantsCompat.VIRTUAL_KEY
+            else -> return
+        }
+
+        view.post { ViewCompat.performHapticFeedback(view, constant) }
     }
 }

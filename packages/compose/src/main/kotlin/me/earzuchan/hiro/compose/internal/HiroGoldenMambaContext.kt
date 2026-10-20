@@ -1,5 +1,6 @@
 package me.earzuchan.hiro.compose.internal
 
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -50,6 +51,8 @@ internal class HiroGoldenMambaContext(private val hiroWindowInsets: PlatformWind
     private val hiroTextInputCoordinator = HiroTextInputCoordinator(imeHost)
 
     override val textToolbar: TextToolbar = androidPlatformServices.createTextToolbar()
+
+    override val hapticFeedback: HapticFeedback = androidPlatformServices.createHapticFeedback()
 
     override val architectureComponentsOwner: PlatformArchitectureComponentsOwner get() = hiroArchitectureComponentsOwner
 

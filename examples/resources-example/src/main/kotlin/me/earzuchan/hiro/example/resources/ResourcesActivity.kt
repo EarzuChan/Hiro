@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,7 +39,9 @@ import androidx.compose.ui.draw.paint
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.res.colorResource
@@ -50,7 +53,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,6 +85,14 @@ private fun ResourcesShowcase() {
     Column(Modifier.safeContentPadding().verticalScroll(rememberScrollState()).padding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.title), style = MaterialTheme.typography.headlineSmall)
         Text("Configuration：locale=${configuration.locales[0]}，orientation=${configuration.orientation}，night=${configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK}")
+
+        Section("链接与触感")
+        val haptic = LocalHapticFeedback.current
+        Text(buildAnnotatedString {
+            append("打开 ")
+            withLink(LinkAnnotation.Url("https://github.com/EarzuChan/Hiro")) { append("Hiro 仓库") }
+        })
+        Button(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }) { Text("长按式触感") }
 
         Section("字符串")
         Text(stringResource(R.string.greeting, "Hiro"))
