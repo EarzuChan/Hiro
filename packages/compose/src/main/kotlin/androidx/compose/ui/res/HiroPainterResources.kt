@@ -1,4 +1,6 @@
 @file:JvmName("PainterResources_androidKt")
+// TIPS：drawable 资源可能是 XML 文件，按 AndroidX 的做法以 getXml 读取
+@file:Suppress("ResourceType")
 
 package androidx.compose.ui.res
 

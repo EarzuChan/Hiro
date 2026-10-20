@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// TIPS：与 AndroidX 原版一致，使用 androidx.core 中限定库组使用的 TypedArrayUtils
+@file:Suppress("RestrictedApi")
+
 package me.earzuchan.hiro.compose.internal.res.vector
 
 // TIPS：移植自 AndroidX compose ui 的 XmlVectorParser，复合颜色改为直接产出 Compose Brush 以适配 Skia

@@ -1,3 +1,6 @@
+// TIPS：与 AndroidX 原版一致，使用 androidx.core 中限定库组使用的 TypedArrayUtils
+@file:Suppress("RestrictedApi")
+
 package me.earzuchan.hiro.compose.internal.res.vector
 
 import android.content.res.Resources
