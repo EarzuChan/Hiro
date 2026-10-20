@@ -18,6 +18,7 @@ val composeJar = processToHiroJar("compose") {
         "androidx.compose.runtime:runtime-annotation-jvm:1.12.1",
         "org.jetbrains.compose.animation:animation-core-desktop:1.12.2",
         "org.jetbrains.compose.animation:animation-desktop:1.12.2",
+        "org.jetbrains.compose.animation:animation-graphics-desktop:1.12.2",
         "org.jetbrains.compose.foundation:foundation-desktop:1.12.2",
         "org.jetbrains.compose.foundation:foundation-layout-desktop:1.12.2",
         "org.jetbrains.compose.ui:ui-backhandler-desktop:1.12.2",

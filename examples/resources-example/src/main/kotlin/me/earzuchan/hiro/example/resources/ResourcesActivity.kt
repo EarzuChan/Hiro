@@ -3,7 +3,12 @@ package me.earzuchan.hiro.example.resources
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
+import androidx.compose.animation.graphics.res.animatedVectorResource
+import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
+import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +28,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.paint
@@ -60,6 +69,7 @@ class ResourcesActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalAnimationGraphicsApi::class)
 @Composable
 private fun ResourcesShowcase() {
     val configuration = LocalConfiguration.current
@@ -87,6 +97,10 @@ private fun ResourcesShowcase() {
             Image(painterResource(R.drawable.landscape), contentDescription = null, modifier = Modifier.size(160.dp, 94.dp), contentScale = ContentScale.FillBounds)
         }
         Text("imageResource 尺寸：" + ImageBitmap.imageResource(R.drawable.landscape).let { "${it.width}x${it.height}" })
+
+        Section("动画矢量（点击切换）")
+        var atEnd by remember { mutableStateOf(false) }
+        Image(rememberAnimatedVectorPainter(AnimatedImageVector.animatedVectorResource(R.drawable.avd_spinner), atEnd), contentDescription = null, modifier = Modifier.clickable { atEnd = !atEnd })
 
         Section("九宫格")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
