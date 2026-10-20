@@ -1,5 +1,6 @@
 package me.earzuchan.hiro.compose.internal
 
+import android.content.res.Configuration as AndroidConfiguration
 import androidx.compose.ui.SystemTheme
 import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.Density
@@ -13,4 +14,5 @@ internal data class HiroComposeEnvironment(
     val systemTheme: SystemTheme,
     val localeList: LocaleList,
     val interactionTuning: HiroInteractionTuning,
+    val androidConfiguration: AndroidConfiguration,
 )

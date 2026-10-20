@@ -12,6 +12,9 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.platform.FrameRecomposer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.PlatformWindowInsets
 import androidx.compose.ui.scene.CanvasLayersComposeScene
 import androidx.compose.ui.scene.ComposeScene
@@ -38,6 +41,10 @@ import me.earzuchan.hiro.log.HiroLog
 @OptIn(InternalComposeUiApi::class)
 internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, private val dispatcher: HiroSkiaRenderDispatcher, initialEnvironment: HiroComposeEnvironment, requestInputMode: (InputMode) -> Boolean, requestNavigationBackHandling: (Boolean) -> Boolean, savedStateTransport: HiroSavedStateTransport, savableStateConfiguration: HiroSavableStateConfiguration, imeHost: HiroImeHost, private val focusBridge: HiroAndroidFocusBridge, androidPlatformServices: HiroAndroidPlatformServices) : AutoCloseable {
     private val systemTheme = mutableStateOf(initialEnvironment.systemTheme)
+
+    private val androidContext = androidPlatformServices.view.context
+
+    private val androidConfiguration = mutableStateOf(initialEnvironment.androidConfiguration)
 
     private val windowInsets = HiroMutablePlatformWindowInsets()
 
@@ -84,6 +91,9 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
         scene.setContent {
             CompositionLocalProvider(
                 LocalSystemTheme provides systemTheme.value,
+                LocalContext provides androidContext,
+                LocalConfiguration provides androidConfiguration.value,
+                LocalResources provides androidContext.resources,
                 LocalLifecycleOwner provides lifecycleOwner,
                 LocalViewModelStoreOwner provides viewModelStoreOwner,
                 LocalNavigationEventDispatcherOwner provides navigationEventDispatcherOwner,
@@ -105,6 +115,7 @@ internal class HiroSkiaComposeScene(private val scheduleFrame: () -> Unit, priva
         if (currentEnvironment.isWindowFocused != environment.isWindowFocused) platformContext.updateWindowFocus(environment.isWindowFocused)
         if (currentEnvironment.layoutDirection != environment.layoutDirection) scene.layoutDirection = environment.layoutDirection
         if (currentEnvironment.systemTheme != environment.systemTheme) systemTheme.value = environment.systemTheme
+        if (currentEnvironment.androidConfiguration != environment.androidConfiguration) androidConfiguration.value = environment.androidConfiguration
         if (currentEnvironment.localeList != environment.localeList) platformContext.updateLocaleList(environment.localeList)
         if (currentEnvironment.interactionTuning != environment.interactionTuning) platformContext.updateInteractionTuning(environment.interactionTuning)
         currentEnvironment = environment

@@ -1,0 +1,13 @@
+<resources>
+    <color name="accent">#FF6A5ACD</color>
+    <dimen name="card_padding">16dp</dimen>
+    <integer name="answer">42</integer>
+    <bool name="is_hiro">true</bool>
+    <integer-array name="primes">
+        <item>2</item>
+        <item>3</item>
+        <item>5</item>
+        <item>7</item>
+    </integer-array>
+    <style name="HiroResourcesExampleTheme" parent="android:Theme.Material.NoActionBar"/>
+</resources>

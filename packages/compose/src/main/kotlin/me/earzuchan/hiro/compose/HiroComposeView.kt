@@ -15,6 +15,7 @@ import me.earzuchan.hiro.compose.internal.architecture.HiroSavedStateTransport
 import me.earzuchan.hiro.compose.internal.util.checkMainThreadForHiroCompose
 import me.earzuchan.hiro.compose.internal.util.name
 import me.earzuchan.hiro.compose.internal.util.shouldLogTouchEvent
+import me.earzuchan.hiro.compose.internal.HiroAndroidApplication
 import me.earzuchan.hiro.log.HiroLog
 import me.earzuchan.hiro.log.HiroLogging
 
@@ -54,6 +55,7 @@ class HiroComposeView private constructor(context: Context, attrs: AttributeSet?
         isFocusableInTouchMode = true
         descendantFocusability = FOCUS_BLOCK_DESCENDANTS
         HiroLogging.attach(context)
+        HiroAndroidApplication.attach(context)
         HiroLog.d(TAG) { "被创建" }
     }
 

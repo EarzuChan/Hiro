@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Hiro 资源</string>
+    <string name="title">Hiro 中的安卓资源</string>
+    <string name="greeting">你好，%1$s！</string>
+    <plurals name="apples">
+        <item quantity="other">%d 个苹果</item>
+    </plurals>
+    <string-array name="planets">
+        <item>水星</item>
+        <item>金星</item>
+        <item>地球</item>
+    </string-array>
+</resources>

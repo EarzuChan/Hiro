@@ -51,7 +51,8 @@ val composeJar = processToHiroJar("compose") {
         "androidx/compose/ui/platform/ClipMetadata.class",
         "androidx/compose/foundation/internal/ClipboardUtils_desktopKt",
         "androidx/compose/foundation/text/input/internal/selection/ClipboardPasteState.class",
-        "androidx/compose/foundation/content/TransferableContent_skikoKt.class"
+        "androidx/compose/foundation/content/TransferableContent_skikoKt.class",
+        "androidx/compose/ui/text/font/SkiaFontLoader.class"
     )
 
     dropPathFragment(
@@ -131,7 +132,8 @@ val composeJar = processToHiroJar("compose") {
         "androidx/compose/ui/platform/ClipMetadata.class",
         "androidx/compose/foundation/internal/ClipboardUtils_desktopKt",
         "androidx/compose/foundation/text/input/internal/selection/ClipboardPasteState.class",
-        "androidx/compose/foundation/content/TransferableContent_skikoKt.class"
+        "androidx/compose/foundation/content/TransferableContent_skikoKt.class",
+        "androidx/compose/ui/text/font/SkiaFontLoader.class"
     )
 }
 

@@ -23,6 +23,7 @@ internal class HiroComposeEnvironmentReader(private val view: View, private val 
             systemTheme = hiroConfiguration.environment.systemThemePolicy.resolve(resources.configuration.systemTheme()),
             localeList = hiroConfiguration.environment.localeListPolicy.resolve(resources.configuration.localeList()),
             interactionTuning = hiroConfiguration.environment.interactionPolicy.resolve(view.context, density),
+            androidConfiguration = AndroidConfiguration(resources.configuration),
         )
     }
 }
