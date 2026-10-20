@@ -6,6 +6,10 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.provider.Property
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import java.io.BufferedOutputStream
@@ -38,6 +42,14 @@ abstract class HiroJarProcessTask : DefaultTask() {
     @get:Input
     abstract val forbiddenJarEntryFragments: ListProperty<String>
 
+    // 随 Jar 附带的文件（如许可证与第三方声明），按文件名放进 bundledFilesDirectory 下，licenses 目录中的文件保留一层子目录
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val bundledFiles: ConfigurableFileCollection
+
+    @get:Input
+    abstract val bundledFilesDirectory: Property<String>
+
     init {
         dropPathPrefixes.convention(emptyList())
         dropPathFragments.convention(emptyList())
@@ -45,6 +57,8 @@ abstract class HiroJarProcessTask : DefaultTask() {
 
         requiredJarEntries.convention(emptyList())
         forbiddenJarEntryFragments.convention(emptyList())
+
+        bundledFilesDirectory.convention("")
     }
 
     @TaskAction
@@ -53,7 +67,12 @@ abstract class HiroJarProcessTask : DefaultTask() {
 
         logger.lifecycle("开始处理${output.name}")
 
-        BlackMambaElbowing.mergeArchives(inputArtifacts.files, output, HiroBlackMambaProcessRule(dropPathPrefixes.get(), dropPathFragments.get(), dropBinaryPatterns.get()))
+        val bundledEntries = bundledFiles.files.filter { it.isFile }.sortedBy { it.name }.associate { file ->
+            val subDirectory = if (file.parentFile?.name == "licenses") "licenses/" else ""
+            "${bundledFilesDirectory.get()}$subDirectory${file.name}" to file.readBytes()
+        }
+
+        BlackMambaElbowing.mergeArchives(inputArtifacts.files, output, HiroBlackMambaProcessRule(dropPathPrefixes.get(), dropPathFragments.get(), dropBinaryPatterns.get()), bundledEntries)
 
         BlackMambaElbowing.assertJar(output, requiredJarEntries.get(), forbiddenJarEntryFragments.get())
     }
@@ -62,7 +81,7 @@ abstract class HiroJarProcessTask : DefaultTask() {
 object BlackMambaElbowing {
     // 处理
 
-    fun mergeArchives(inputArchives: Iterable<File>, outputJar: File, rule: HiroBlackMambaProcessRule) {
+    fun mergeArchives(inputArchives: Iterable<File>, outputJar: File, rule: HiroBlackMambaProcessRule, bundledEntries: Map<String, ByteArray> = emptyMap()) {
         outputJar.parentFile.mkdirs()
 
         val seenEntries = linkedSetOf<String>()
@@ -71,6 +90,13 @@ object BlackMambaElbowing {
                 if (entryName in seenEntries || shouldDropResource(entryName)) return
                 if (shouldDropEntry(entryName, bytes, rule)) return
 
+                seenEntries += entryName
+                writer.putNextEntry(ZipEntry(entryName).apply { time = 0L })
+                writer.write(bytes)
+                writer.closeEntry()
+            }
+
+            bundledEntries.forEach { (entryName, bytes) ->
                 seenEntries += entryName
                 writer.putNextEntry(ZipEntry(entryName).apply { time = 0L })
                 writer.write(bytes)

@@ -35,6 +35,13 @@ class HiroArtifactProcessingSpec internal constructor(logicalName: String) {
 
     var transitive: Boolean = false
 
+    internal var legalFilesModuleName: String? = null
+
+    /** 把 Hiro 的许可证、第三方声明与许可证原文附带进本 Jar 的 META-INF/hiro-<模块名>/，每个发布模块只需在一个 Jar 上调用 */
+    fun bundleLegalFiles(moduleName: String) {
+        legalFilesModuleName = moduleName
+    }
+
     fun artifact(coordinate: String) {
         coordinates += coordinate
     }
@@ -84,6 +91,12 @@ fun Project.processToHiroJar(name: String, configure: HiroArtifactProcessingSpec
 
         requiredJarEntries.set(spec.requiredJarEntries) // 必要条目校验：有任何缺失将抛出，防止核心被误删
         forbiddenJarEntryFragments.set(spec.forbiddenJarEntryFragments) // 禁止路径校验：检查生成的 JAR 中是否包含任何匹配的条目
+
+        spec.legalFilesModuleName?.let { moduleName ->
+            val root = rootProject.layout.projectDirectory
+            bundledFiles.from(root.file("LICENSE"), root.file("THIRD_PARTY_NOTICES.md"), root.dir("licenses").asFileTree)
+            bundledFilesDirectory.set("META-INF/hiro-$moduleName/")
+        }
     }
 
     // TODO：只有一个Jar，为什么要叫Files呢？能不能化简。。。？

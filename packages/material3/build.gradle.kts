@@ -1,4 +1,5 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
+import me.earzuchan.hiro.buildlogic.configureHiroPom
 import me.earzuchan.hiro.buildlogic.processToHiroJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -10,6 +11,8 @@ plugins {
 
 val material3Jar = processToHiroJar("material3") {
     artifact("org.jetbrains.compose.material3:material3-desktop:1.12.0-alpha03")
+
+    bundleLegalFiles("material3")
 
     // 平台水波纹入口由 Hiro 顶替
     dropPathPrefix("androidx/compose/material3/internal/ripple/Ripple_skikoKt")
@@ -58,6 +61,7 @@ publishing {
     publications {
         register<MavenPublication>("release") {
             artifactId = "material3"
+            configureHiroPom("Hiro Material 3", "Hiro Compose 的 Material 3，含复刻 AOSP 的水波纹")
             val publication = this
             project.afterEvaluate { publication.from(project.components["release"]) }
         }

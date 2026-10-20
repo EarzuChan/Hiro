@@ -1,4 +1,5 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
+import me.earzuchan.hiro.buildlogic.configureHiroPom
 import me.earzuchan.hiro.buildlogic.processToHiroJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -29,6 +30,8 @@ val composeJar = processToHiroJar("compose") {
         "org.jetbrains.compose.ui:ui-unit-desktop:1.12.2",
         "org.jetbrains.compose.ui:ui-util-desktop:1.12.2"
     )
+
+    bundleLegalFiles("compose")
 
     // 处理
 
@@ -280,6 +283,7 @@ publishing {
     publications {
         register<MavenPublication>("release") {
             artifactId = "compose"
+            configureHiroPom("Hiro Compose", "在安卓上运行 Skia 版 Compose Multiplatform")
             val publication = this
             project.afterEvaluate { publication.from(project.components["release"]) }
         }

@@ -1,4 +1,5 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
+import me.earzuchan.hiro.buildlogic.configureHiroPom
 import me.earzuchan.hiro.buildlogic.processToHiroJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -13,6 +14,8 @@ plugins {
 val skikoJar = processToHiroJar("skiko") {
     // 版本须与本机库所移植的 Skiko 一致，否则 JNI 签名对不上
     artifact("org.jetbrains.skiko:skiko-android:0.150.2")
+
+    bundleLegalFiles("skia")
 
     // 处理：本机库已裁掉这些包装的 JNI，且 Hiro 与 Compose 均不引用，直接剔除，使误用在编译期暴露
 
@@ -86,6 +89,7 @@ publishing {
     publications {
         register<MavenPublication>("release") {
             artifactId = "skia"
+            configureHiroPom("Hiro Skia", "在安卓上提供 Skia（Skiko）及其 GLES 承载，Hiro Compose 的根基")
             val publication = this
             project.afterEvaluate { publication.from(project.components["release"]) }
         }

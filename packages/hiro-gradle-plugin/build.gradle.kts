@@ -1,4 +1,5 @@
 import me.earzuchan.hiro.buildlogic.HiroBuildConfig
+import me.earzuchan.hiro.buildlogic.configureHiroPom
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
@@ -49,6 +50,7 @@ gradlePlugin {
 
 publishing {
     publications.withType<MavenPublication>().configureEach {
+        configureHiroPom("Hiro Gradle Plugin", "为使用 Hiro 的安卓工程剥离官方 Compose 依赖、选用 Skiko 变体，并代为生成 Compose 资源")
         artifactId = when (name) {
             "pluginMaven" -> "hiro-gradle-plugin"
 
