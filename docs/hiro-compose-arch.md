@@ -174,7 +174,8 @@ flowchart LR
 - Android 主线程只采集平台事件、更新宿主关系和安排帧
 - Composition、Snapshot Apply、Measure、Layout、手势消费和 Draw 由 Skia 渲染线程执行
 - EGL、Skia GPU Surface、Canvas 只由 Skia 渲染线程访问
-- Compose Runtime 的全局 Snapshot Apply 任务由 `HiroSnapshotApplyDispatcher` 投递给已注册的 Hiro 渲染调度器；尚无调度器时暂存，不回落到 Android Main
+- Compose Runtime 的全局 Snapshot Apply 由各场景 `FrameRecomposer` 向 `GlobalSnapshotManager` 登记的渲染调度器派发；平台层的延时任务若找不到当前调度器，则经 `HiroSnapshotApplyDispatcher` 投递给已注册的 Hiro 渲染调度器，尚无调度器时暂存，均不回落到 Android Main
+- 组合中可取得 `LocalContext` 等安卓对象，但它们也运行在渲染线程上，只宜做读取资源等线程安全的操作
 - 跨区可变数据只能通过命令或快照副本运输
 - 不把 Android Owner 暴露给 Hiro Composition，也不把 Hiro Owner 交给 Android 主线程操作
 

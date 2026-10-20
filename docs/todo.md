@@ -1,21 +1,25 @@
 # 待办
 
-- [X] 内建各组件的关键点Log，以及基于Debug/Release的启用性门控：HiroLog，Release 只留警告与错误，R8 剥离其余
+- [X] 跟进 CMP 1.12.2：Compose 1.12.2、Material3 1.12.0-alpha03、Lifecycle 2.11.0，Skiko 0.150.2 / Skia m150 本机库已移植补丁并重编
+- [X] 内建各组件的关键点Log，以及基于Debug/Release的启用性门控：HiroLog，Release 只留警告与错误，R8 剥离其余；Debug 可由 HiroLogging 调级
 - [X] Compose：ViewModel、LifeCycle、SavedState的支持基本完成，接下来是R和Res：R、Assets、JB Res 均已支持，纯安卓模块由 HGP 代为生成 Res
-- [-] BuildLogic优化：是否需要再简化代码？黑曼巴
-- [X] Skiko 可以变成 Processed Jar，且这同CMP都可以再屏蔽些类：已打进 Hiro Skia，并剔除本机库已裁的包装
+- [-] BuildLogic优化：是否需要再简化代码？黑曼巴。已加许可证随 Jar 附带与统一 POM
+- [X] Skiko 可以变成 Processed Jar，且这同CMP都可以再屏蔽些类：已打进 Hiro Skia，并剔除本机库已裁的包装，用户不再需要 JetBrains 仓库
 - [ ] 斜窗正家具：View的Transform，而里面HiroCompose渲染画面仍是正的。是否要同步，或者是可配置，有待讨论
 - [-] 重建活动，Activity VM 实例能做到不变，而 Hiro VM 实例改变。这虽是预期行为，但有没有要改的
-- [-] Input手感调优：AI说可接ViewCfg里的参数，有必要吗
+- [X] Input手感调优：已读取系统交互参数，并可经 HiroCfg 的交互策略调整
 - [-]IME与TextField、剪贴板正常性：基本OK，差手写、更多Input接入（虚拟触控板、键盘）什么的高级功能，暂不考虑做；另输入法顶起视图的问题
 - [X] 考虑本机库、Compose的减小化、可被Tree-shake和架构裁剪：目前已基本减小化，看看有没有什么稳定性问题
 - [-] 客制化：各方面的`更好的用户自定义入口`：基本完成，HiroCfg
-- [-] HGP优化：基本OK。考虑是否引入剥离豁免
+- [X] HGP优化：已接管 Skiko，并为纯安卓模块生成 Compose 资源；剥离豁免暂无需求（Icons、Preview 不做）
 - [-] Sysbar适配：基本完成。Sysbar的颜色问题？（这是AndroidX的锅还是我的）。Insets 未来可看是否做 ViewPort Relative NEW API？再说
-- [X] 测试液态玻璃和Miuix：已跑通
+- [X] 测试液态玻璃和Miuix：已跑通，Backdrop 需 2.0.1 以上才兼容 CMP 1.12
 - [X] 切换系统颜色导致Compose重置（可能是Activity重开）。但其实有办法让Activity不重开，想办法解决一下：这个是具体App的Change问题，改清单耳
+- [X] 发布准备：MIT 许可证、第三方声明与许可证原文随工件附带，POM 元数据齐全，外部工程（无 JetBrains 仓库、Kotlin 2.2）验证通过
+- [X] 链接与触感：UriHandler 可打开链接，HapticFeedback 接入安卓触感
 - [ ] 无障碍：TalkBack 读不到 Hiro 内容，需把语义树接到 AccessibilityNodeProvider
 - [ ] 拖放：DragAndDropNode 依赖的桌面实现已剥离，安卓端尚未接入
 - [ ] Drawable：selector、layer-list 等 XML Drawable 未支持，可考虑按需原生实现或软件兜底；XML 字体族未支持
 - [ ] Lazy 预取：1.12 起 PlatformContext 提供 prefetchScheduler，尚未接入
 - [ ] 实机验证：本轮只在 API 36 的 x86_64 模拟器上验证，arm64 真机与 API 28 设备待测
+- [ ] Skiko JNI Critical Region 修复已被上游合并，待其随 Skiko 正式发布后去掉 Hiro 的自行修补
