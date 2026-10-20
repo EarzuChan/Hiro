@@ -27,7 +27,7 @@
 - **Hiro Skia**：对 Skia（Skiko）的打包，在安卓上提供 `SkiaLayer` 和 `SkiaSurfaceView`。这也是 Hiro Compose 的根基。
 - **Hiro Compose**：基于 Compose Multiplatform 的 UI/Runtime/Foundation 等的 SkikoDesktop 版本以及相关组件作为底版制作，并深度修补，尽力补齐在安卓上的体验（接入各种事件，并提供 HiroComposeView等）。
 - **Hiro Material 3**：对 Compose Multiplatform 的 Material 3 的 Skia（Skiko）/Desktop（即 Jvm）的打包与体验补齐。
-- **Hiro Gradle Plugin**：帮助用户实现无感对第三方 Compose 包的 Skia（Skiko）/Desktop 模块转用（ Android 转用 Skia（Skiko）/Desktop，并阻断对 AndroidX Compose / Compose Multiplatform 的 Android 的依赖引入），还能在纯安卓模块中代为生成 JetBrains Compose 资源（`Res`）。
+- **Hiro Gradle Plugin**：帮助用户实现无感对第三方 Compose 包的 Skia（Skiko）/Desktop 模块转用（ Android 转用 Skia（Skiko）/Desktop，并阻断对 AndroidX Compose / Compose Multiplatform 的 Android 的依赖引入），把这些第三方包中的桌面平台类型（如 `SavedState`）重新链接到安卓，还能在纯安卓模块中代为生成 JetBrains Compose 资源（`Res`）。
 - **Examples，几个使用例**：不但是我们开发测试时的参考面，也可以让您深度体验和了解 Hiro 各方面能力。
 - **[Whole App Example](https://github.com/EarzuChan/HiroWholeAppExample)**：一个简单但架构完整的 App，用以展示 Hiro 在开发可用 App 上的可行性。
 
@@ -72,7 +72,7 @@
 - **原版安卓资源（R 与 Assets）**：提供与 AndroidX 同名的接口，如 `stringResource`、`pluralStringResource`、`colorResource`、`dimensionResource`、`painterResource`、`ImageVector.vectorResource`、`ImageBitmap.imageResource`，以及 `LocalContext`、`LocalConfiguration`、`LocalResources`；语言、深色模式等配置变化时自动重组。
   - `painterResource` 支持矢量图（含渐变）、位图、九宫格（.9.png）与形状（shape）；动画矢量请用 `AnimatedImageVector.animatedVectorResource` 搭配 `rememberAnimatedVectorPainter`。
   - 字体支持 `Font(R.font.xxx)` 与 `Font("fonts/xxx.ttf", assets)`。
-- **JetBrains 的 Compose 资源（Res）**：纯安卓模块下，请您应用与 Hiro 所跟随版本一致的 Compose 插件，并把资源放进 `src/main/composeResources`，Hiro Gradle 插件会代为生成 `Res`（默认包名为 `<group>.<模块名>.generated.resources`）：
+- **JetBrains 的 Compose 资源（Res）**：纯安卓模块下，请您应用与 Hiro 所跟随版本一致的 Compose 插件，并把资源放进 `src/main/composeResources`，Hiro Gradle 插件会代为生成 `Res`（默认包名为 `<group>.<模块名>.generated.resources`，可经 `compose.resources {}` 自定义包名与类名）。该插件仅作为构建期的资源编译工具与配置入口，不会引入官方 Compose 运行库：
   ```kotlin
   plugins {
       id("org.jetbrains.compose") version "1.12.2"

@@ -32,6 +32,10 @@ kotlin {
 dependencies {
     implementation(gradleApi())
 
+    // 平台链接转换改写第三方字节码所用。与 AGP 共处同一类加载器，运行时可能用到 AGP 带来的较旧 ASM，故只用 ASM 9 早期即有的 API
+    implementation("org.ow2.asm:asm:9.8")
+    implementation("org.ow2.asm:asm-commons:9.8")
+
     // 仅编译期依赖，运行时使用用户构建中已有的 AGP 与 Compose 插件；Compose 插件版本须与 Hiro 所跟随的 CMP 一致
     compileOnly("com.android.tools.build:gradle-api:${libs.versions.agp.get()}")
     compileOnly("org.jetbrains.compose:compose-gradle-plugin:1.12.2")

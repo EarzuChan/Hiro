@@ -1,13 +1,13 @@
 package me.earzuchan.hiro.gradleplugin.verdict
 
 import me.earzuchan.hiro.gradleplugin.HiroExtension
+import me.earzuchan.hiro.gradleplugin.misc.HiroAttributes
 import me.earzuchan.hiro.gradleplugin.misc.HiroDependencyPolicy
 import me.earzuchan.hiro.gradleplugin.processing.HiroVariantKind
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
-import org.gradle.api.attributes.Attribute
 import java.util.Collections
 
 internal class HiroFinalVerdict(private val project: Project, private val extension: HiroExtension) {
@@ -152,7 +152,7 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
 
             task.configurationPath.set(configuration.displayPath())
             task.binaryLeakAction.convention(project.provider { extension.binaryLeakAction })
-            task.jarArtifacts.from(configuration.incoming.artifactView { it.attributes.attribute(artifactType, "jar") }.files) // 预选仅Jar
+            task.jarArtifacts.from(configuration.incoming.artifactView { it.attributes.attribute(HiroAttributes.artifactType, "jar") }.files) // 预选仅Jar
         }
 
         project.tasks.configureEach { if (it.name == preVariantBuildTaskName) it.dependsOn(task) }
@@ -198,9 +198,5 @@ internal class HiroFinalVerdict(private val project: Project, private val extens
             externalVariantName?.let { append(" / 外部变体 $it") }
             kind?.let { append(" / 种类 $it") }
         }
-    }
-
-    private companion object {
-        val artifactType: Attribute<String> = Attribute.of("artifactType", String::class.java)
     }
 }

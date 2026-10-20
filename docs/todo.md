@@ -22,4 +22,7 @@
 - [ ] Drawable：selector、layer-list 等 XML Drawable 未支持，可考虑按需原生实现或软件兜底；XML 字体族未支持
 - [ ] Lazy 预取：1.12 起 PlatformContext 提供 prefetchScheduler，尚未接入
 - [X] 实机验证：API 28（雷电 x86_64）全部示例与交互通过，arm64 真机（小米，安卓 16）冒烟通过；雷电等模拟器的 ARM 转译层无法加载 Skiko 本机库（JB 官方库同样），回头 mac avd 测测（API28和新API）
+- [X] 平台重新链接：第三方桌面变体中的桌面 `SavedState` 由 HGP 产物转换改链为 `Bundle`，inline 漏出的专属成员经 `HiroSavedStateBridge` 桥接（miuix-nav、koin-core-viewmodel 实测）
+- [ ] Hiro 自身处理后的 Jar（随 aar 发布）不经 HGP 转换，CMP 的 `DefaultArchitectureComponentsOwner` 仍按桌面 `SavedState` 链接。现为死代码（Hiro 顶替了 architectureComponentsOwner），可考虑在 build-logic 处理时同样改链
+- [ ] 预测性返回（以后或可考虑）：宿主桥只转发返回完成，未转发开始、进度与取消，miuix-nav 等的跟手预览动画因此不生效；返回本身与取消手势均正常
 - [ ] Skiko JNI Critical Region 修复已被上游合并，待其随 Skiko 正式发布后去掉 Hiro 的自行修补

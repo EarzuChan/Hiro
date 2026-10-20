@@ -1,5 +1,6 @@
 package me.earzuchan.hiro.gradleplugin
 
+import me.earzuchan.hiro.gradleplugin.linking.HiroPlatformLinking
 import me.earzuchan.hiro.gradleplugin.misc.HiroAndroidPackaging
 import me.earzuchan.hiro.gradleplugin.misc.HiroAttributes
 import me.earzuchan.hiro.gradleplugin.processing.HiroDependenciesManageRule
@@ -40,12 +41,16 @@ class HiroGradlePlugin : Plugin<Project> {
         // 进行对本工程的每个依赖项进行深度（这个是Gradle保证的）包剥离+变体选入
         project.dependencies.components.all(HiroDependenciesManageRule::class.java)
 
+        // 换成桌面变体的三方包里，桌面平台类型（如 SavedState）须重新链接到安卓
+        HiroPlatformLinking.configure(project)
+
         // 对每个配置（即依赖的分组。如comp、rt）进行拨弄
         project.configurations.configureEach(Action { configuration ->
             if (!configuration.isAndroidMainClasspath()) return@Action
 
             project.logger.lifecycle("Hiro Gradle 插件：接管了 ${project.path} 的 ${configuration.name} 分组")
             configuration.attributes.attribute(HiroAttributes.hiroVariant, true) // 对暗号，以使得我们在DepsManRule创建的特色变体生效
+            HiroPlatformLinking.requestLinked(configuration)
 
             finalVerdict.perform(configuration)
         })

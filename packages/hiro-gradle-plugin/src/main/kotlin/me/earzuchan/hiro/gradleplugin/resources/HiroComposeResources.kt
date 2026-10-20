@@ -85,8 +85,7 @@ internal object HiroComposeResources {
             task.onlyIf { shouldGenerate.get() }
         }
 
-        // 运行时按 composeResources/<包名>/ 读取，故把处理后的资源放到 assets 的对应子目录
-        // THINKING、CHECK：如果用户（想）指定自定义Res生成类名怎么办？
+        // 运行时按 composeResources/<包名>/ 读取，故把处理后的资源放到 assets 的对应子目录。路径只取决于包名，自定义 Res 类名（nameOfResClass）不受影响，已实测
         val assets = project.tasks.register("hiroPackComposeResourcesAssets", HiroComposeResourcesAssetsTask::class.java) { task ->
             task.preparedDirectory.set(prepare.flatMap { it.outputDir })
             task.packagePath.set(packagingDir.map { it.invariantSeparatorsPath })

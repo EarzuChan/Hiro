@@ -94,9 +94,18 @@ Hiro 自身模块 → 直接放行
 Skiko（含桌面版 skiko-awt）→ 阻断，由 Hiro Skia 提供
 纯安卓模块应用 Compose 插件 → 代为生成 JetBrains Compose 资源的 Res
 第三方 KMP Compose 库 → 选择 Skiko/Desktop 变体
+桌面变体中的桌面平台类型 → 重新链接到安卓
 最终 classpath → 做所有权与类泄漏校验
 
 基础 `androidx.lifecycle.ViewModel`、`Lifecycle`、`SavedState` 等类型仍由 Android 与 Hiro 共用。Hiro 接管的是它们的 Compose 适配层，以及运行在 Hiro 行政区内的 Owner 实例。
+
+### 平台重新链接
+
+共用安卓的基础类型，带来一个缝隙：公共层 `expect` 的某些类型在桌面上是真类、在安卓上却是别名。典型如 `SavedState`——桌面上是包着 Map 的类，安卓上是 `Bundle`。第三方包换成桌面变体后，其字节码按桌面真类链接，到了安卓便会 `NoSuchMethodError`。
+
+HGP 以 Gradle 产物转换处理：Jar 产物默认“未链接”，Hiro 接管的类路径请求“已链接”，转换时依[平台别名表](../packages/hiro-gradle-plugin/src/main/kotlin/me/earzuchan/hiro/gradleplugin/linking/HiroPlatformAliases.kt)把桌面类型改名为安卓类型，相当于按安卓 actual 重新链接；不含这些类型的 Jar 原样放行。
+
+桌面真类的专属成员会经 inline 函数漏进调用方（如 `savedState {}` 内联出的 `new SavedState(map)` 与 `state.map`），改名后安卓上并不存在，故改写到 Hiro Compose 中的桥接类 `HiroSavedStateBridge`。改写不改变操作数栈形状，栈映射帧无需重算；遇到表外的专属成员访问则直接报错，不放任其带病进包。
 
 ## 一个世界，两个“行政区”
 

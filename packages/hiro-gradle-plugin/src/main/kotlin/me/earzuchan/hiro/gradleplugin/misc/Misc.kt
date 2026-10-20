@@ -42,4 +42,8 @@ internal object HiroAttributes {
     val hiroVariant: Attribute<Boolean> = Attribute.of("me.earzuchan.hiro.variant", Boolean::class.javaObjectType)
 
     val hiroVariantKind: Attribute<String> = Attribute.of("me.earzuchan.hiro.kmpvariantkind", String::class.java)
+
+    val hiroPlatformLinked: Attribute<Boolean> = Attribute.of("me.earzuchan.hiro.platformlinked", Boolean::class.javaObjectType)
+
+    val artifactType: Attribute<String> = Attribute.of("artifactType", String::class.java)
 }
